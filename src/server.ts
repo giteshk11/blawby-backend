@@ -9,7 +9,23 @@ import app from './app';
 import { initSwagger } from './swagger';
 
 // Load environment variables with dotenvx (supports template literals natively)
-dotenvx.config();
+// --- Safely ignore missing .env files (prevents MISSING_ENV_FILE errors in Render)
+try {
+  // Option A: ask dotenvx to ignore missing files
+  dotenvx.config({
+    path: ['.env.local', '.env'],
+    ignore: ['MISSING_ENV_FILE'],
+    // quiet: true, // uncomment if you want even less logging
+  });
+} catch (e) {
+  // Fallback: don't let dotenvx crash the startup if something unexpected happens
+  // (should be rare because of `ignore`, but this keeps startup robust)
+  // eslint-disable-next-line no-console
+  console.warn(
+    'dotenvx failed to load (continuing with process.env):',
+    (e as Error).message,
+  );
+}
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
@@ -86,10 +102,11 @@ server.addHook('onClose', (_instance, done) => {
 });
 
 // Start listening.
-void server.listen({
-  port: Number(process.env.PORT ?? 3000),
-  host: process.env.SERVER_HOSTNAME ?? '127.0.0.1',
-});
+// NOTE: Render sets PORT and expects host 0.0.0.0 — prefer that in cloud environments.
+const port = Number(process.env.PORT ?? 3000);
+const host = process.env.SERVER_HOSTNAME ?? '0.0.0.0';
+
+void server.listen({ port, host });
 
 void server.ready((err) => {
   if (err) {
@@ -106,9 +123,7 @@ void server.ready((err) => {
     server.log.info(route);
   }
 
-  server.log.info(
-    `Server listening on port ${Number(process.env.PORT ?? 3000)}`,
-  );
+  server.log.info(`Server listening on ${host}:${port}`);
 });
 
 export { server as app };
