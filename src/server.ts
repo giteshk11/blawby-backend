@@ -7,13 +7,32 @@ import { consola } from 'consola';
 import { FastifyRequest } from 'fastify';
 import app from './app';
 import { initSwagger } from './swagger';
+import fs from 'fs';
+
+// Directory where .env files usually live
+const envDir = process.cwd();
+
+// List all files in that directory
+const files = fs.readdirSync(envDir);
+
+// Regex to match .env files (e.g., .env, .env.local, .env.production)
+const envRegex = /^\.env(\..+)?$/;
+
+// Filter matching files
+const envFiles = files.filter((file) => envRegex.test(file));
+
+if (envFiles.length > 0) {
+  console.log(`[Env check] ✅ Found env files: ${envFiles.join(', ')}`);
+} else {
+  console.log('[Env check] ⚠️ No .env files found');
+}
 
 // Load environment variables with dotenvx (supports template literals natively)
 // --- Safely ignore missing .env files (prevents MISSING_ENV_FILE errors in Render)
 try {
   // Option A: ask dotenvx to ignore missing files
   dotenvx.config({
-    path: ['.env.local', '.env'],
+    path: ['.env.local', '.env', 'env.staging'],
     ignore: ['MISSING_ENV_FILE'],
     // quiet: true, // uncomment if you want even less logging
   });
