@@ -1,0 +1,232 @@
+---
+alwaysApply: true
+---
+
+You are a senior TypeScript programmer with experience in the Fastify framework and a preference for clean programming and design patterns.
+
+Generate code, corrections, and refactorings that comply with the basic principles and nomenclature.
+
+# Cursor Rules
+
+## General
+
+- Use English for all code and documentation.
+- Always declare explicit types for variables, parameters, and return values. Avoid `any`.
+- Prefer types over interfaces for simple data structures
+- Create necessary types; do not overuse primitives.
+- One export per file.
+- Use constants for magic numbers and strings.
+- Prefer immutability; use `readonly` and `as const` where appropriate.
+- Use complete words (no abbrev.), except: API, URL
+
+## Import Path Rules
+
+### ✅ **ALWAYS USE FULL PATH ALIASES - NO RELATIVE PATHS**
+
+**MANDATORY: Use these aliases instead of relative paths:**
+
+```typescript
+// ✅ CORRECT - Use full path aliases
+import { db } from '@/database';
+import { auth } from '@/auth';
+import { organization } from '@/schema';
+import { PracticeService } from 'features/practice/services';
+import { StripeService } from 'features/stripe/services';
+
+// ❌ WRONG - Don't use relative paths
+import { db } from '@db';
+import { auth } from '../../../../auth';
+import { organization } from '../../../schema';
+import { PracticeService } from '../services';
+import { StripeService } from './services';
+```
+
+### **Available Aliases:**
+
+- `@/database` and `@/database/*` - Database imports
+- `@/auth` - Auth imports
+- `@/schema` and `@/schema/*` - Schema imports
+- `features/*` - Cross-feature imports
+
+### **Why This Rule Exists:**
+
+1. **Consistency** - All imports follow the same pattern
+2. **Maintainability** - Easy to move files without breaking imports
+3. **Clarity** - Clear where imports come from
+4. **Refactoring** - Safe to reorganize code structure
+
+## Naming
+
+- Files and directories: kebab-case.
+- Variables, functions, methods: camelCase.
+- Environment variables: UPPERCASE.
+- Booleans start with verbs: `isX`, `hasX`, `canX`, `shouldX`.
+
+## Functions
+
+- **Declare every function as a function expression.**
+  - Simple (<3 statements): arrow function.
+  - Non-trivial: **named function expression** for better stack traces.
+- Keep functions single-purpose, <20 statements.
+- Start names with a verb: `getUser`, `createUser`, `isValid`, `saveEntity`, `executeTask`.
+- Use early returns to avoid nesting. Extract logic into helpers.
+- Prefer map/filter/reduce over imperative loops when clearer.
+- Use default parameter values instead of null/undefined checks.
+- Reduce params with RO-RO:
+  - Input as an object.
+  - Output as an object with named fields.
+- No blank lines _inside_ functions.
+- Maintain a single level of abstraction per function.
+
+### Function Templates
+
+```ts
+// simple
+export const getUserName = (input: { id: string }): string => {
+  return input.id;
+};
+
+// non-trivial
+export const createUser = function createUser(
+  input: CreateUserDto,
+): Promise<UserDto> {
+  return service.createUser(input).then(mapUserToDto);
+};
+```
+
+Data:
+
+- Don't abuse primitive types and encapsulate data in composite types.
+- Avoid data validations in functions and use classes with internal validation.
+- Prefer immutability for data.
+- Use readonly for data that doesn't change.
+- Use as const for literals that don't change.
+
+Exceptions:
+
+- Use exceptions to handle errors you don't expect.
+- If you catch an exception, it should be to:
+  - Fix an expected problem.
+  - Add context.
+- Otherwise, use a global handler.
+
+Testing:
+
+- Follow the Arrange-Act-Assert convention for tests.
+- Name test variables clearly.
+- Follow the convention: inputX, mockX, actualX, expectedX, etc.
+- Write unit tests for each public function.
+- Use test doubles to simulate dependencies.
+  - Except for third-party dependencies that are not expensive to execute.
+- Write acceptance tests for each module.
+- Follow the Given-When-Then convention.
+
+## Directory Structure
+
+Our project follows a modular, feature-based architecture with clear separation of concerns:
+
+### Root Structure
+
+```
+src/
+├── app.ts                 # Main Fastify application entry point
+├── server.ts              # Server configuration and startup
+├── auth.ts                # Better Auth configuration
+├── database/               # Database connection and migrations
+├── plugins/                # Fastify plugins (auth, cors, etc.)
+├── routes/                 # API route handlers
+├── schema/                 # Drizzle schema definitions
+├── types/                  # Global TypeScript type definitions
+└── app/                    # Feature-based modules
+```
+
+### Feature-Based Architecture (`src/app/`)
+
+Each feature is self-contained with its own:
+
+```
+app/features/{feature-name}/
+├── api/                    # API route handlers for this feature
+├── database/
+│   ├── queries/            # Database query functions
+│   └── schema/             # Feature-specific database schemas
+├── services/               # Business logic services
+├── types/                  # Feature-specific types
+└── index.ts                # Feature exports
+```
+
+### Plugin System (`src/plugins/`)
+
+Fastify plugins for cross-cutting concerns:
+
+- `auth.ts` - Better Auth integration
+- `cors.ts` - CORS configuration
+- `helmet.ts` - Security headers
+- `sensible.ts` - Error handling utilities
+- `dev-optimizations.ts` - Development-specific optimizations
+
+### Database Layer (`src/database/`)
+
+- `index.ts` - Database connection setup
+- `migrations/` - Drizzle migration files
+- Uses PostgreSQL with Drizzle ORM
+- Feature-specific schemas in `app/features/*/database/schema/`
+
+### Error Handling
+
+- Uses `@fastify/sensible` for consistent error responses
+- Global error handlers in plugins
+- Consistent error format across all APIs (Better Auth and regular)
+
+### Stripe Integration
+
+- Feature-based Stripe services in `app/features/stripe/`
+- Event-driven webhook processing using Node.js EventEmitter
+- Service auto-discovery and lazy loading
+- Connected accounts, subscriptions, payments, and invoicing support
+- Webhook endpoints: `/api/webhooks/stripe`
+
+### Logging
+
+- Uses `consola` for beautiful, structured logging
+- `pino-pretty` for development console output
+- Fastify's built-in logger with custom serializers
+- Development optimizations for faster startup
+
+### Development Workflow
+
+- `npm run dev` - Development server with hot reload
+- `npm run dev:fast` - Optimized development server
+- `npm run db:generate` - Generate database migrations
+- `npm run db:migrate` - Apply database migrations
+
+## Specific to Fastify
+
+Basic Principles:
+
+- Use a modular architecture for your Fastify API.
+- Encapsulate the API into modules:
+  - One module per domain or main route.
+  - One route for each HTTP resource, encapsulated in plugins.
+  - One handler per route that deals with its business logic.
+- Use hooks (onRequest, preHandler, etc.) for request lifecycle management.
+- Drizzle ORM:
+  - Use Drizzle Client to interact with your database.
+  - Create services to manage entities and abstract database operations from the handlers.
+  - Use Drizzle's schema for generating types and migrations.
+- A folder for shared utilities:
+  - Middleware for common request handling.
+  - Global error handlers.
+  - Logging and instrumentation.
+  - Utility functions used across the application.
+- Environment management:
+  - Use `@dotenvx/dotenvx` for environment variable management with template support.
+  - Store sensitive information in environment variables (like DB_URL, STRIPE_SECRET_KEY).
+
+Testing:
+
+- Use the Jest framework for unit and integration tests.
+- Write unit tests for every service and handler.
+- Use test doubles (mocks, stubs) to simulate dependencies.
+- Write end-to-end tests using Fastify's inject method for simulating requests.
+- Create a /health route for health checks or smoke tests in each module.

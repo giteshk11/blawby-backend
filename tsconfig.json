@@ -1,0 +1,24 @@
+{
+  "ts-node": {
+    "compilerOptions": {
+      "esModuleInterop": true
+    }
+  },
+  "extends": "./node_modules/fastify-tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/database": ["./src/database"],
+      "@/database/*": ["./src/database/*"],
+      "features/*": ["./src/app/features/*"],
+      "@/schema": ["./src/schema"],
+      "@/schema/*": ["./src/schema/*"],
+      "@/auth": ["./src/auth"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

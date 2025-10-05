@@ -1,0 +1,692 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Blawby API",
+    "version": "1.0.0",
+    "description": "Blawby Law Practice Management API with Stripe integration",
+    "contact": {
+      "name": "Blawby Support",
+      "email": "support@blawby.com"
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/auth/{*}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "*",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/webhooks/stripe": {
+      "post": {
+        "summary": "Endpoint for /api/webhooks/stripe",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/webhooks/stripe",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/": {
+      "get": {
+        "summary": "Endpoint for /api/api/",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/api/",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/health/check": {
+      "get": {
+        "summary": "Endpoint for /api/api/health/check",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/api/health/check",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "summary": "Endpoint for /api/posts",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/posts",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "summary": "Endpoint for /api/posts",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/posts",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/user/login": {
+      "post": {
+        "summary": "Endpoint for /api/api/user/login",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/api/user/login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Endpoint for /api/users",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/users",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "summary": "Endpoint for /api/users",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/users",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Endpoint for /api/users/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/users/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "summary": "Endpoint for /api/users/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/users/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Endpoint for /api/users/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/users/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/details": {
+      "post": {
+        "summary": "Create practice details",
+        "tags": [
+          "Practice Management"
+        ],
+        "description": "Creates practice details for the active organization",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "get": {
+        "summary": "Get practice details",
+        "tags": [
+          "Practice Management"
+        ],
+        "description": "Retrieves practice details for the active organization",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/details/{organizationId}": {
+      "get": {
+        "summary": "Endpoint for /api/practice/details/:organizationId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/details/:organizationId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "organizationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "summary": "Endpoint for /api/practice/details/:organizationId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/details/:organizationId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "organizationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Endpoint for /api/practice/details/:organizationId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/details/:organizationId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "organizationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/create": {
+      "post": {
+        "summary": "Endpoint for /api/practice/create",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/create",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/list": {
+      "get": {
+        "summary": "Endpoint for /api/practice/list",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/list",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/{id}": {
+      "get": {
+        "summary": "Endpoint for /api/practice/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "summary": "Endpoint for /api/practice/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Endpoint for /api/practice/:id",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/{id}/member": {
+      "post": {
+        "summary": "Endpoint for /api/practice/:id/member",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id/member",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/{id}/member/{userId}": {
+      "delete": {
+        "summary": "Endpoint for /api/practice/:id/member/:userId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id/member/:userId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "summary": "Endpoint for /api/practice/:id/member/:userId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id/member/:userId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/{id}/members": {
+      "get": {
+        "summary": "Endpoint for /api/practice/:id/members",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id/members",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/{id}/switch": {
+      "post": {
+        "summary": "Endpoint for /api/practice/:id/switch",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/:id/switch",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/practice/active": {
+      "get": {
+        "summary": "Endpoint for /api/practice/active",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/practice/active",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/connected-accounts": {
+      "post": {
+        "summary": "Create a new Stripe connected account",
+        "tags": [
+          "Stripe Connected Accounts"
+        ],
+        "description": "Creates a new Stripe connected account using blawby's advanced method",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/connected-accounts/{accountId}": {
+      "get": {
+        "summary": "Endpoint for /api/connected-accounts/:accountId",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/connected-accounts/:accountId",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "accountId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/account-links": {
+      "post": {
+        "summary": "Endpoint for /api/account-links",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/account-links",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/connected-accounts/onboarding/start": {
+      "post": {
+        "summary": "Start Stripe onboarding process",
+        "tags": [
+          "Stripe Connected Accounts"
+        ],
+        "description": "Creates or retrieves a Stripe connected account and starts the onboarding process",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/organizations/{organizationId}/onboarding-status": {
+      "get": {
+        "summary": "Endpoint for /api/organizations/:organizationId/onboarding-status",
+        "tags": [
+          "api"
+        ],
+        "description": "API endpoint for /api/organizations/:organizationId/onboarding-status",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "organizationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development server"
+    }
+  ]
+}
