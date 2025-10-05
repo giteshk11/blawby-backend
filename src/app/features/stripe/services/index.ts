@@ -41,6 +41,9 @@ export {
   handleSubscriptionCreated,
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
+  handleAccountUpdated,
+  handleInvoicePaid,
+  handleInvoicePaymentFailed,
 } from './subscription-service';
 
 export {

@@ -1,5 +1,5 @@
 import { getStripeClient } from './stripe-client';
-import { StripeUsageEventQueries } from 'features/stripe/database/queries';
+import { createUsageEvent } from 'features/stripe/database/queries';
 
 export type InvoiceData = {
   customerId: string;
@@ -41,7 +41,7 @@ export const createInvoiceItem = async function createInvoiceItem(
 ): Promise<any> {
   const stripe = getStripeClient();
 
-  return await stripeService.createInvoiceItem({
+  return await stripe.invoiceItems.create({
     customer: data.customerId,
     amount: data.amount,
     currency: data.currency,
@@ -56,9 +56,9 @@ export const createInvoiceItem = async function createInvoiceItem(
 export const finalizeInvoice = async function finalizeInvoice(
   invoiceId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
+  const stripe = getStripeClient();
 
-  return await stripeService.finalizeInvoice(invoiceId);
+  return await stripe.invoices.finalizeInvoice(invoiceId);
 };
 
 /**
@@ -67,9 +67,9 @@ export const finalizeInvoice = async function finalizeInvoice(
 export const sendInvoice = async function sendInvoice(
   invoiceId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
+  const stripe = getStripeClient();
 
-  return await stripeService.sendInvoice(invoiceId);
+  return await stripe.invoices.sendInvoice(invoiceId);
 };
 
 /**
@@ -78,9 +78,9 @@ export const sendInvoice = async function sendInvoice(
 export const payInvoice = async function payInvoice(
   invoiceId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
+  const stripe = getStripeClient();
 
-  return await stripeService.payInvoice(invoiceId);
+  return await stripe.invoices.pay(invoiceId);
 };
 
 /**
@@ -89,9 +89,9 @@ export const payInvoice = async function payInvoice(
 export const voidInvoice = async function voidInvoice(
   invoiceId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
+  const stripe = getStripeClient();
 
-  return await stripeService.voidInvoice(invoiceId);
+  return await stripe.invoices.voidInvoice(invoiceId);
 };
 
 /**
@@ -100,9 +100,9 @@ export const voidInvoice = async function voidInvoice(
 export const listInvoices = async function listInvoices(
   params: any,
 ): Promise<any> {
-  const stripeService = new StripeService();
+  const stripe = getStripeClient();
 
-  return await stripeService.listInvoices(params);
+  return await stripe.invoices.list(params);
 };
 
 /**
@@ -117,7 +117,7 @@ export const handleInvoicePaid = async function handleInvoicePaid(
     // Record usage event for invoice fee
     if (invoice.customer) {
       const invoiceFee = invoice.total || 0;
-      await StripeUsageEventQueries.createUsageEvent({
+      await createUsageEvent({
         stripeCustomerId: invoice.customer as string,
         eventName: 'invoice_paid',
         object: 'invoice',
@@ -144,7 +144,7 @@ export const handleInvoicePaymentFailed =
 
       // Record failed payment event
       if (invoice.customer) {
-        await StripeUsageEventQueries.createUsageEvent({
+        await createUsageEvent({
           stripeCustomerId: invoice.customer as string,
           eventName: 'invoice_payment_failed',
           object: 'invoice',

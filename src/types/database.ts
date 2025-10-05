@@ -1,4 +1,4 @@
-import * as tables from '../database/schema';
+import * as tables from 'src/database/index';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 
 // TypeScript types for Better Auth tables
@@ -38,7 +38,3 @@ export const selectOrganizationSchema = createSelectSchema(tables.organization);
 
 export const insertMemberSchema = createInsertSchema(tables.member);
 export const selectMemberSchema = createSelectSchema(tables.member);
-
-
-
-

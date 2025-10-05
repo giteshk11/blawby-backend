@@ -1,4 +1,4 @@
-import * as tables from '../database/schema';
+import * as tables from 'features/stripe/database/schema';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 
 // TypeScript types for Stripe tables

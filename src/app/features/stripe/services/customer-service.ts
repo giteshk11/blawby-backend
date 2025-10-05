@@ -1,4 +1,4 @@
-import { StripeService } from './index';
+import { getStripeClient } from './stripe-client';
 import {
   createCustomer,
   getCustomerByStripeId,
@@ -19,10 +19,10 @@ export type CustomerData = {
 export const createStripeCustomer = async function createStripeCustomer(
   data: CustomerData,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Create customer in Stripe
-  const stripeCustomer = await stripeService.createCustomer({
+  const stripeCustomer = await stripe.customers.create({
     name: data.name,
     email: data.email,
     currency: data.currency || 'USD',
@@ -46,8 +46,8 @@ export const createStripeCustomer = async function createStripeCustomer(
 export const refreshCustomerDetails = async function refreshCustomerDetails(
   customerId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Get customer from database
   const customer = await getCustomerByStripeId(customerId);
   if (!customer) {
@@ -55,7 +55,7 @@ export const refreshCustomerDetails = async function refreshCustomerDetails(
   }
 
   // Get fresh data from Stripe
-  const stripeCustomer = await stripeService.getCustomer(customerId);
+  const stripeCustomer = await stripe.customers.retrieve(customerId);
 
   // Update local data
   const updatedCustomer = await updateCustomer(customer.id, {
@@ -74,10 +74,10 @@ export const updateStripeCustomer = async function updateStripeCustomer(
   customerId: string,
   data: Partial<CustomerData>,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Update customer in Stripe
-  const stripeCustomer = await stripeService.stripe.customers.update(customerId, {
+  const stripeCustomer = await stripe.customers.update(customerId, {
     name: data.name,
     email: data.email,
     metadata: data.metadata,
@@ -102,10 +102,10 @@ export const updateStripeCustomer = async function updateStripeCustomer(
 export const deleteStripeCustomer = async function deleteStripeCustomer(
   customerId: string,
 ): Promise<void> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Delete from Stripe
-  await stripeService.stripe.customers.del(customerId);
+  await stripe.customers.del(customerId);
 
   // Delete from local database
   const customer = await getCustomerByStripeId(customerId);

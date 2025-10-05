@@ -1,4 +1,4 @@
-import { StripeService } from './index';
+import { getStripeClient } from './stripe-client';
 import {
   createCustomPayment,
   getCustomPaymentByStripeId,
@@ -26,13 +26,20 @@ export type PaymentIntentData = {
 export const createPaymentIntent = async function createPaymentIntent(
   data: PaymentIntentData,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
-  return await stripeService.createPaymentIntent({
+  const stripe = getStripeClient();
+
+  const paymentIntentData: any = {
     amount: data.amount,
     currency: data.currency,
-    connectedAccountId: data.connectedAccountId,
     metadata: data.metadata,
+  };
+
+  if (data.connectedAccountId) {
+    paymentIntentData.application_fee_amount = Math.round(data.amount * 0.1); // 10% fee
+  }
+
+  return await stripe.paymentIntents.create(paymentIntentData, {
+    stripeAccount: data.connectedAccountId,
   });
 };
 
@@ -42,9 +49,14 @@ export const createPaymentIntent = async function createPaymentIntent(
 export const createSetupIntent = async function createSetupIntent(
   connectedAccountId?: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
-  return await stripeService.createSetupIntent(connectedAccountId);
+  const stripe = getStripeClient();
+
+  return await stripe.setupIntents.create(
+    {},
+    {
+      stripeAccount: connectedAccountId,
+    },
+  );
 };
 
 /**
@@ -53,14 +65,21 @@ export const createSetupIntent = async function createSetupIntent(
 export const processCustomPayment = async function processCustomPayment(
   data: PaymentData,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Create payment intent
-  const paymentIntent = await stripeService.createPaymentIntent({
+  const paymentIntentData: any = {
     amount: data.amount,
     currency: data.currency,
-    connectedAccountId: data.connectedAccountId,
     metadata: data.metadata,
+  };
+
+  if (data.connectedAccountId) {
+    paymentIntentData.application_fee_amount = Math.round(data.amount * 0.1); // 10% fee
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create(paymentIntentData, {
+    stripeAccount: data.connectedAccountId,
   });
 
   // Save to database
@@ -88,7 +107,7 @@ export const handlePaymentSucceeded = async function handlePaymentSucceeded(
 ): Promise<void> {
   // Get payment from database
   const payment = await getCustomPaymentByStripeId(paymentIntentId);
-  
+
   if (payment) {
     // Update payment status
     await updateCustomPayment(payment.id, {
@@ -105,7 +124,7 @@ export const handlePaymentFailed = async function handlePaymentFailed(
 ): Promise<void> {
   // Get payment from database
   const payment = await getCustomPaymentByStripeId(paymentIntentId);
-  
+
   if (payment) {
     // Update payment status
     await updateCustomPayment(payment.id, {
@@ -120,7 +139,7 @@ export const handlePaymentFailed = async function handlePaymentFailed(
 export const getChargeDetails = async function getChargeDetails(
   chargeId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
-  return await stripeService.getCharge(chargeId);
+  const stripe = getStripeClient();
+
+  return await stripe.charges.retrieve(chargeId);
 };

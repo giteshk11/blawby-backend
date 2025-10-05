@@ -1,4 +1,4 @@
-import { StripeService } from './index';
+import { getStripeClient } from './stripe-client';
 import {
   createSubscription,
   getSubscriptionByStripeId,
@@ -28,10 +28,10 @@ export type MeterEventData = {
 export const createStripeSubscription = async function createStripeSubscription(
   data: SubscriptionData,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Create subscription in Stripe
-  const stripeSubscription = await stripeService.createSubscription({
+  const stripeSubscription = await stripe.subscriptions.create({
     customer: data.customerId,
     items: [{ price: data.priceId }],
     metadata: data.metadata,
@@ -42,7 +42,9 @@ export const createStripeSubscription = async function createStripeSubscription(
     customerId: data.customerId,
     stripeSubscriptionId: stripeSubscription.id,
     status: stripeSubscription.status,
-    currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+    currentPeriodStart: new Date(
+      stripeSubscription.current_period_start * 1000,
+    ),
     currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
     metadata: data.metadata,
   });
@@ -53,29 +55,33 @@ export const createStripeSubscription = async function createStripeSubscription(
 /**
  * Get subscription details from Stripe and update local database
  */
-export const refreshSubscriptionDetails = async function refreshSubscriptionDetails(
-  subscriptionId: string,
-): Promise<any> {
-  const stripeService = new StripeService();
-  
-  // Get subscription from database
-  const subscription = await getSubscriptionByStripeId(subscriptionId);
-  if (!subscription) {
-    throw new Error('Subscription not found');
-  }
+export const refreshSubscriptionDetails =
+  async function refreshSubscriptionDetails(
+    subscriptionId: string,
+  ): Promise<any> {
+    const stripe = getStripeClient();
 
-  // Get fresh data from Stripe
-  const stripeSubscription = await stripeService.stripe.subscriptions.retrieve(subscriptionId);
+    // Get subscription from database
+    const subscription = await getSubscriptionByStripeId(subscriptionId);
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
 
-  // Update local data
-  const updatedSubscription = await updateSubscription(subscription.id, {
-    status: stripeSubscription.status,
-    currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-  });
+    // Get fresh data from Stripe
+    const stripeSubscription =
+      await stripe.subscriptions.retrieve(subscriptionId);
 
-  return updatedSubscription;
-};
+    // Update local data
+    const updatedSubscription = await updateSubscription(subscription.id, {
+      status: stripeSubscription.status,
+      currentPeriodStart: new Date(
+        stripeSubscription.current_period_start * 1000,
+      ),
+      currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+    });
+
+    return updatedSubscription;
+  };
 
 /**
  * Cancel a subscription
@@ -83,10 +89,10 @@ export const refreshSubscriptionDetails = async function refreshSubscriptionDeta
 export const cancelSubscription = async function cancelSubscription(
   subscriptionId: string,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Cancel subscription in Stripe
-  const stripeSubscription = await stripeService.stripe.subscriptions.cancel(subscriptionId);
+  const stripeSubscription = await stripe.subscriptions.cancel(subscriptionId);
 
   // Update local database
   const subscription = await getSubscriptionByStripeId(subscriptionId);
@@ -105,14 +111,16 @@ export const cancelSubscription = async function cancelSubscription(
 export const createMeterEvent = async function createMeterEvent(
   data: MeterEventData,
 ): Promise<any> {
-  const stripeService = new StripeService();
-  
+  const stripe = getStripeClient();
+
   // Create meter event in Stripe
-  const stripeEvent = await stripeService.createMeterEvent({
+  const stripeEvent = await stripe.billing.meterEvents.create({
     customer: data.customerId,
     event_name: data.eventName,
     value: data.value,
-    timestamp: data.timestamp ? Math.floor(data.timestamp.getTime() / 1000) : Math.floor(Date.now() / 1000),
+    timestamp: data.timestamp
+      ? Math.floor(data.timestamp.getTime() / 1000)
+      : Math.floor(Date.now() / 1000),
     payload: data.metadata,
   });
 
@@ -161,70 +169,117 @@ export const getCustomerUsageEvents = async function getCustomerUsageEvents(
 /**
  * Handle subscription created
  */
-export const handleSubscriptionCreated = async function handleSubscriptionCreated(
-  subscription: any,
-): Promise<void> {
-  try {
-    console.log('Subscription created:', subscription.id);
-    
-    // Create subscription in database if not exists
-    const existingSubscription = await getSubscriptionByStripeId(subscription.id);
-    if (!existingSubscription) {
-      await createSubscription({
-        customerId: subscription.customer,
-        stripeSubscriptionId: subscription.id,
-        status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        metadata: subscription.metadata,
-      });
+export const handleSubscriptionCreated =
+  async function handleSubscriptionCreated(subscription: any): Promise<void> {
+    try {
+      console.log('Subscription created:', subscription.id);
+
+      // Create subscription in database if not exists
+      const existingSubscription = await getSubscriptionByStripeId(
+        subscription.id,
+      );
+      if (!existingSubscription) {
+        await createSubscription({
+          customerId: subscription.customer,
+          stripeSubscriptionId: subscription.id,
+          status: subscription.status,
+          currentPeriodStart: new Date(
+            subscription.current_period_start * 1000,
+          ),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          metadata: subscription.metadata,
+        });
+      }
+    } catch (error) {
+      console.error('Error handling subscription created:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('Error handling subscription created:', error);
-    throw error;
-  }
-};
+  };
 
 /**
  * Handle subscription updated
  */
-export const handleSubscriptionUpdated = async function handleSubscriptionUpdated(
-  subscription: any,
+export const handleSubscriptionUpdated =
+  async function handleSubscriptionUpdated(subscription: any): Promise<void> {
+    try {
+      console.log('Subscription updated:', subscription.id);
+
+      // Update subscription in database
+      const existingSubscription = await getSubscriptionByStripeId(
+        subscription.id,
+      );
+      if (existingSubscription) {
+        await updateSubscription(existingSubscription.id, {
+          status: subscription.status,
+          currentPeriodStart: new Date(
+            subscription.current_period_start * 1000,
+          ),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        });
+      }
+    } catch (error) {
+      console.error('Error handling subscription updated:', error);
+      throw error;
+    }
+  };
+
+/**
+ * Handle subscription deleted
+ */
+export const handleSubscriptionDeleted =
+  async function handleSubscriptionDeleted(subscription: any): Promise<void> {
+    try {
+      console.log('Subscription deleted:', subscription.id);
+
+      // Delete subscription from database
+      const existingSubscription = await getSubscriptionByStripeId(
+        subscription.id,
+      );
+      if (existingSubscription) {
+        await deleteSubscription(existingSubscription.id);
+      }
+    } catch (error) {
+      console.error('Error handling subscription deleted:', error);
+      throw error;
+    }
+  };
+export const handleAccountUpdated = async function handleAccountUpdated(
+  accountData: any,
 ): Promise<void> {
   try {
-    console.log('Subscription updated:', subscription.id);
-    
-    // Update subscription in database
-    const existingSubscription = await getSubscriptionByStripeId(subscription.id);
-    if (existingSubscription) {
-      await updateSubscription(existingSubscription.id, {
-        status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      });
-    }
+    console.log('Account updated:', accountData.id);
+    // Add account update logic here
   } catch (error) {
-    console.error('Error handling subscription updated:', error);
+    console.error('Error handling account updated:', error);
     throw error;
   }
 };
 
 /**
- * Handle subscription deleted
+ * Handle invoice paid webhook
  */
-export const handleSubscriptionDeleted = async function handleSubscriptionDeleted(
-  subscription: any,
+export const handleInvoicePaid = async function handleInvoicePaid(
+  invoice: any,
 ): Promise<void> {
   try {
-    console.log('Subscription deleted:', subscription.id);
-    
-    // Delete subscription from database
-    const existingSubscription = await getSubscriptionByStripeId(subscription.id);
-    if (existingSubscription) {
-      await deleteSubscription(existingSubscription.id);
-    }
+    console.log('Invoice paid:', invoice.id);
+    // Add invoice paid logic here
   } catch (error) {
-    console.error('Error handling subscription deleted:', error);
+    console.error('Error handling invoice paid:', error);
     throw error;
   }
 };
+
+/**
+ * Handle invoice payment failed webhook
+ */
+export const handleInvoicePaymentFailed =
+  async function handleInvoicePaymentFailed(invoice: any): Promise<void> {
+    try {
+      console.log('Invoice payment failed:', invoice.id);
+      // Add invoice payment failed logic here
+    } catch (error) {
+      console.error('Error handling invoice payment failed:', error);
+      throw error;
+    }
+  };
