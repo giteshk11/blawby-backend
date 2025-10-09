@@ -12,12 +12,17 @@
     "strictNullChecks": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@modules/*": ["./src/modules/*"],
       "@/database": ["./src/database"],
       "@/database/*": ["./src/database/*"],
-      "features/*": ["./src/app/features/*"],
       "@/schema": ["./src/schema"],
       "@/schema/*": ["./src/schema/*"],
-      "@/auth": ["./src/auth"]
+      "@/auth": ["./src/auth"],
+      "@/types": ["./src/types"],
+      "@/types/*": ["./src/types/*"],
+      "@/plugins/*": ["./src/plugins/*"]
     }
   },
   "include": ["src/**/*.ts"]

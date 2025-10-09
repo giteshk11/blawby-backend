@@ -1,0 +1,103 @@
+// src/plugins/auth-core.ts
+import fp from 'fastify-plugin';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { eq, and } from 'drizzle-orm';
+import {
+  session as sessionTable,
+  organization as organizationTable,
+  member as memberTable,
+} from '@/schema';
+
+// Extend Fastify types
+declare module 'fastify' {
+  interface FastifyInstance {
+    verifyAuth(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+  }
+  interface FastifyRequest {
+    user?: any;
+    session?: any;
+    userId?: string;
+    activeOrganizationId?: string;
+  }
+}
+
+/**
+ * Auth Core Plugin
+ * Decorates Fastify with verifyAuth method
+ */
+export default fp(async function authCore(fastify: FastifyInstance) {
+  fastify.decorate(
+    'verifyAuth',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        // Get authorization header
+        const authHeader = request.headers.authorization;
+
+        if (!authHeader) {
+          return reply.unauthorized('No authorization header');
+        }
+
+        fastify.log.info(`Auth header: ${authHeader.substring(0, 20)}...`);
+
+        // Use Better Auth's session API to verify
+        const session = await fastify.betterAuth.api.getSession({
+          headers: request.headers as Record<string, string>,
+        });
+
+        fastify.log.info(`Session result: ${session ? 'valid' : 'null'}`);
+
+        if (!session) {
+          return reply.unauthorized('Invalid or expired session');
+        }
+
+        // Check if the active organization still exists and user has access
+        let activeOrganizationId =
+          session.session.activeOrganizationId || undefined;
+
+        if (activeOrganizationId) {
+          try {
+            // Verify the organization exists and user has access
+            const orgCheck = await fastify.db
+              .select({ id: organizationTable.id })
+              .from(organizationTable)
+              .innerJoin(
+                memberTable,
+                eq(organizationTable.id, memberTable.organizationId),
+              )
+              .where(
+                and(
+                  eq(organizationTable.id, activeOrganizationId),
+                  eq(memberTable.userId, session.user.id),
+                ),
+              )
+              .limit(1);
+
+            if (orgCheck.length === 0) {
+              // Update the session in the database to clear the invalid activeOrganizationId
+              await fastify.db
+                .update(sessionTable)
+                .set({ activeOrganizationId: null })
+                .where(eq(sessionTable.id, session.session.id));
+
+              // Clear from request session as well
+              activeOrganizationId = undefined;
+            }
+          } catch {
+            // If organization validation fails, clear the organization context
+            activeOrganizationId = undefined;
+          }
+        }
+
+        // Attach user and session to request
+        request.user = session.user;
+        request.session = session.session;
+        request.userId = session.user.id;
+        request.activeOrganizationId = activeOrganizationId;
+      } catch {
+        return reply.unauthorized('Authentication failed');
+      }
+    },
+  );
+
+  fastify.log.info('✅ Auth core plugin registered (verifyAuth decorated)');
+});

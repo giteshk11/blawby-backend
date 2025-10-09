@@ -1,42 +1,35 @@
-import { join } from 'node:path';
-import AutoLoad from '@fastify/autoload';
+import { FastifyInstance } from 'fastify';
+import fileRouterPlugin from './shared/router/file-router';
 
-import type { AutoloadPluginOptions } from '@fastify/autoload';
-import type { FastifyPluginAsync } from 'fastify';
+// Core plugins
+import dbPlugin from './shared/database/client';
+import betterAuthPlugin from './shared/auth/better-auth';
+import authCore from './shared/auth/verify-auth';
 
-export type AppOptions = {
-  // Place your custom options for app below here.
-} & Partial<AutoloadPluginOptions>;
+// Infrastructure plugins
+import sensiblePlugin from './shared/middleware/sensible';
+import corsPlugin from './shared/middleware/cors';
+import helmetPlugin from './shared/middleware/helmet';
+import rateLimitPlugin from './shared/middleware/rate-limit';
 
-const app: FastifyPluginAsync<AppOptions> = async (
-  fastify,
-  opts,
-): Promise<void> => {
-  // Place here your custom code!
+/**
+ * Application setup
+ * Registers all plugins and file-based routes
+ */
+export default async function app(fastify: FastifyInstance) {
+  // 1. Infrastructure (order matters!)
+  await fastify.register(sensiblePlugin);
+  await fastify.register(corsPlugin);
+  await fastify.register(helmetPlugin);
+  await fastify.register(rateLimitPlugin);
 
-  // Do not touch the following lines
+  // 2. Core services
+  await fastify.register(dbPlugin);
+  await fastify.register(betterAuthPlugin);
+  await fastify.register(authCore);
 
-  // This loads all plugins defined in plugins
-  // those should be support plugins that are reused
-  // through your application
-  void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'plugins'),
-    options: opts,
-  });
+  // 3. File-based routes (auto-discovery)
+  await fastify.register(fileRouterPlugin);
 
-  // This loads all plugins defined in routes
-  // define your routes in one of these
-  void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'routes'),
-    options: opts,
-  });
-
-  // Load feature routes
-  void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'app/features'),
-    options: opts,
-  });
-};
-
-export default app;
-export { app };
+  fastify.log.info('✅ Application setup complete');
+}

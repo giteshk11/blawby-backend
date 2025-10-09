@@ -1,1 +1,7 @@
-export * from './auth-schema';
+export * from './better-auth-schema';
+
+// Export onboarding schemas
+export * from '../modules/onboarding/schemas/onboarding.schema';
+
+// Remove old billing schemas that conflict
+// export * from '../modules/billing/schemas/billing.schema';

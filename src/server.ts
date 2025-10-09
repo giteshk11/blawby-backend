@@ -6,7 +6,6 @@ import Fastify from 'fastify';
 import { consola } from 'consola';
 import { FastifyRequest } from 'fastify';
 import app from './app';
-import { initSwagger } from './swagger';
 import fs from 'fs';
 
 // Directory where .env files usually live
@@ -99,9 +98,6 @@ const server = Fastify({
 
 // Add custom logging methods using Consola
 server.decorate('consola', consola);
-
-// Init Swagger first (before registering app with prefix)
-void initSwagger(server);
 
 // Register your application as a normal plugin with API prefix.
 void server.register(app, { prefix: '/api' });

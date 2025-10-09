@@ -18,6 +18,7 @@ Generate code, corrections, and refactorings that comply with the basic principl
 - Use constants for magic numbers and strings.
 - Prefer immutability; use `readonly` and `as const` where appropriate.
 - Use complete words (no abbrev.), except: API, URL
+- Never use deprecated methods or APIs - always use current, supported versions
 
 ## Import Path Rules
 
@@ -97,7 +98,6 @@ export const createUser = function createUser(
 Data:
 
 - Don't abuse primitive types and encapsulate data in composite types.
-- Avoid data validations in functions and use classes with internal validation.
 - Prefer immutability for data.
 - Use readonly for data that doesn't change.
 - Use as const for literals that don't change.
@@ -106,8 +106,8 @@ Exceptions:
 
 - Use exceptions to handle errors you don't expect.
 - If you catch an exception, it should be to:
-  - Fix an expected problem.
-  - Add context.
+- Fix an expected problem.
+- Add context.
 - Otherwise, use a global handler.
 
 Testing:
@@ -117,7 +117,7 @@ Testing:
 - Follow the convention: inputX, mockX, actualX, expectedX, etc.
 - Write unit tests for each public function.
 - Use test doubles to simulate dependencies.
-  - Except for third-party dependencies that are not expensive to execute.
+- Except for third-party dependencies that are not expensive to execute.
 - Write acceptance tests for each module.
 - Follow the Given-When-Then convention.
 
