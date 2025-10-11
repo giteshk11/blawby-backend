@@ -17,6 +17,8 @@ import {
   UpdatePracticeRequest,
 } from '../schemas/practice.schema';
 import type { FastifyInstance } from 'fastify';
+import { EventType } from '@/shared/events/enums/event-types';
+import { publishEvent } from '@/shared/events/dispatcher';
 
 type User = {
   id: string;
@@ -114,7 +116,40 @@ export const createPracticeService = async (
       calendlyUrl,
       userId: user.id,
     });
+
+    // Publish practice details created event
+    await publishEvent({
+      fastify,
+      eventType: EventType.PRACTICE_DETAILS_CREATED,
+      actorId: user.id,
+      organizationId: organization.id,
+      data: {
+        practiceDetailsId: practiceDetails.id,
+        businessPhone,
+        businessEmail,
+        consultationFee,
+        paymentUrl,
+        calendlyUrl,
+      },
+      headers: requestHeaders,
+    });
   }
+
+  // Publish practice created event (organization + optional details)
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_CREATED,
+    actorId: user.id,
+    organizationId: organization.id,
+    data: {
+      organizationName: organization.name,
+      organizationSlug: organization.slug,
+      hasPracticeDetails: !!practiceDetails,
+      practiceDetailsId: practiceDetails?.id,
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
 
   return {
     ...organization,
@@ -164,7 +199,40 @@ export const updatePracticeService = async (
       paymentUrl,
       calendlyUrl,
     });
+
+    // Publish practice details updated event
+    await publishEvent({
+      fastify,
+      eventType: EventType.PRACTICE_DETAILS_UPDATED,
+      actorId: user.id,
+      organizationId,
+      data: {
+        practiceDetailsId: practiceDetails?.id,
+        businessPhone,
+        businessEmail,
+        consultationFee,
+        paymentUrl,
+        calendlyUrl,
+      },
+      headers: requestHeaders,
+    });
   }
+
+  // Publish practice updated event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_UPDATED,
+    actorId: user.id,
+    organizationId,
+    data: {
+      organizationName: organization?.name || 'Unknown',
+      organizationSlug: organization?.slug || 'unknown',
+      hasPracticeDetails: !!practiceDetails,
+      practiceDetailsId: practiceDetails?.id,
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
 
   return {
     ...organization,
@@ -178,11 +246,55 @@ export const deletePracticeService = async (
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
 ) => {
+  // Get practice details before deletion for event payload
+  const existingPracticeDetails =
+    await findPracticeDetailsByOrganization(organizationId);
+
   // Delete optional practice details first
   await deletePracticeDetails(organizationId);
 
+  // Publish practice details deleted event if they existed
+  if (existingPracticeDetails) {
+    await publishEvent({
+      fastify,
+      eventType: EventType.PRACTICE_DETAILS_DELETED,
+      actorId: user.id,
+      organizationId,
+      data: {
+        practiceDetailsId: existingPracticeDetails.id,
+        businessPhone: existingPracticeDetails.businessPhone,
+        businessEmail: existingPracticeDetails.businessEmail,
+        consultationFee: existingPracticeDetails.consultationFee,
+        paymentUrl: existingPracticeDetails.paymentUrl,
+        calendlyUrl: existingPracticeDetails.calendlyUrl,
+      },
+      headers: requestHeaders,
+    });
+  }
+
   // Delete organization in Better Auth
-  return deleteOrganization(organizationId, user, fastify, requestHeaders);
+  const result = await deleteOrganization(
+    organizationId,
+    user,
+    fastify,
+    requestHeaders,
+  );
+
+  // Publish practice deleted event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_DELETED,
+    actorId: user.id,
+    organizationId,
+    data: {
+      hadPracticeDetails: !!existingPracticeDetails,
+      practiceDetailsId: existingPracticeDetails?.id,
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
+
+  return result;
 };
 
 export const setActivePractice = async (

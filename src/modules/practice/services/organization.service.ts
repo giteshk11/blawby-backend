@@ -6,9 +6,11 @@ import {
 } from '@/types/better-auth';
 import { eq } from 'drizzle-orm';
 import {
-  organization as organizationTable,
-  member as memberTable,
+  organizations as organizationTable,
+  members as memberTable,
 } from '@/schema';
+import { EventType } from '@/shared/events/enums/event-types';
+import { publishEvent } from '@/shared/events/dispatcher';
 
 type User = {
   id: string;
@@ -47,6 +49,21 @@ export const createOrganization = async (
 
   const result = await fastify.betterAuth.api.createOrganization({
     body: data,
+    headers: requestHeaders,
+  });
+
+  // Publish practice created event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_CREATED,
+    actorId: user.id,
+    organizationId: result?.id || 'unknown',
+    data: {
+      organizationName: result?.name || 'Unknown',
+      organizationSlug: result?.slug || 'unknown',
+      role: 'owner',
+      userEmail: user.email,
+    },
     headers: requestHeaders,
   });
 
@@ -106,6 +123,22 @@ export const updateOrganization = async (
     },
     headers: requestHeaders,
   });
+
+  // Publish practice updated event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_UPDATED,
+    actorId: user.id,
+    organizationId,
+    data: {
+      organizationName: result?.name || 'Unknown',
+      organizationSlug: result?.slug || 'unknown',
+      updatedFields: Object.keys(data),
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
+
   return result;
 };
 
@@ -119,6 +152,19 @@ export const deleteOrganization = async (
     body: { organizationId },
     headers: requestHeaders,
   });
+
+  // Publish practice deleted event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_DELETED,
+    actorId: user.id,
+    organizationId,
+    data: {
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
+
   return result;
 };
 
@@ -132,6 +178,19 @@ export const setActiveOrganization = async (
     body: { organizationId },
     headers: requestHeaders,
   });
+
+  // Publish practice switched event
+  await publishEvent({
+    fastify,
+    eventType: EventType.PRACTICE_SWITCHED,
+    actorId: user.id,
+    organizationId,
+    data: {
+      userEmail: user.email,
+    },
+    headers: requestHeaders,
+  });
+
   return result;
 };
 

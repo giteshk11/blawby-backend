@@ -74,7 +74,7 @@ async function loadRouteConfig(modulePath: string): Promise<RouteConfig> {
       const configModule = await import(configPath);
       return configModule.routeConfig || { protected: true };
     }
-  } catch (error) {
+  } catch {
     // Config file doesn't exist or has errors, use default
   }
 

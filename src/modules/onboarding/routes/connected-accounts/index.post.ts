@@ -15,12 +15,16 @@ export default async function createConnectedAccountRoute(
   // Validate request body
   const body = createAccountRequestSchema.parse(request.body);
 
-  // Get organization ID from authenticated user
+  // Get organization ID from authenticated user or request body (for users without org yet)
   const organizationId =
-    request.user?.organization?.id || request.activeOrganizationId;
+    request.user?.organization?.id ||
+    request.activeOrganizationId ||
+    (request.body as any).organizationId;
 
   if (!organizationId) {
-    return reply.badRequest('Organization ID is required');
+    return reply.badRequest(
+      'Organization ID is required. Please create a practice first.',
+    );
   }
 
   try {

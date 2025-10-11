@@ -25,6 +25,7 @@ export default async function updateUserSettingsRoute(
     request.userId!,
     validatedData,
     request.userId!, // changedBy
+    request.server, // fastify instance for events
   );
 
   return reply.send({ data: settings });

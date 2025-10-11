@@ -9,7 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { organization } from '@/schema';
+import { organizations } from '@/schema';
 
 // TypeScript types for JSON fields
 export type CompanyInfo = {
@@ -78,7 +78,7 @@ export const stripeConnectedAccounts = pgTable('stripe_connected_accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: text('organization_id')
     .notNull()
-    .references(() => organization.id, { onDelete: 'cascade' }),
+    .references(() => organizations.id, { onDelete: 'cascade' }),
   stripeAccountId: text('account_id').notNull().unique(),
   accountType: text('account_type').default('custom').notNull(),
   country: text('country').default('US').notNull(),

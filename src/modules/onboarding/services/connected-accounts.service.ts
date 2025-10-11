@@ -23,6 +23,7 @@ import type {
   Capabilities,
   ExternalAccounts,
 } from '@/modules/onboarding/schemas/onboarding.schema';
+import { EventType } from '@/shared/events/enums/event-types';
 
 export const createOrGetAccount = async (
   fastify: FastifyInstance,
@@ -91,6 +92,21 @@ export const createOrGetAccount = async (
 
   // Generate account session
   const session = await createOnboardingSession(fastify, stripeAccount.id);
+
+  // Publish billing onboarding started event
+  await fastify.events.publish({
+    eventType: EventType.BILLING_ONBOARDING_STARTED,
+    eventVersion: '1.0.0',
+    actorId: 'system',
+    actorType: 'system',
+    organizationId,
+    payload: {
+      accountId: stripeAccount.id,
+      email,
+      country: 'US',
+    },
+    metadata: fastify.events.createMetadata('api'),
+  });
 
   return {
     accountId: stripeAccount.id,
@@ -231,6 +247,25 @@ export const handleAccountUpdated = async (
   if (accountData.details_submitted && !account.onboardingCompletedAt) {
     updateData.onboardingCompletedAt = new Date();
     fastify.log.info(`Onboarding completed for account: ${stripeAccountId}`);
+
+    // Publish billing onboarding completed event
+    await fastify.events.publish({
+      eventType: EventType.BILLING_ONBOARDING_COMPLETED,
+      eventVersion: '1.0.0',
+      actorId: 'webhook-stripe',
+      actorType: 'webhook',
+      organizationId: account.organizationId,
+      payload: {
+        stripeAccountId,
+        chargesEnabled: accountData.charges_enabled,
+        payoutsEnabled: accountData.payouts_enabled,
+        detailsSubmitted: accountData.details_submitted,
+        businessType: accountData.business_type,
+        userEmail: account.email,
+        organizationName: 'Unknown', // TODO: Get from organization
+      },
+      metadata: fastify.events.createMetadata('webhook'),
+    });
   }
 
   await updateStripeConnectedAccountByStripeId(

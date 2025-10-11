@@ -10,6 +10,10 @@ import fp from 'fastify-plugin';
  */
 export default fp<FastifyCorsOptions>(async (fastify, opts) => {
   await fastify.register(cors, {
+    origin: true, // Allow all origins in development
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
     ...opts,
   });
 });

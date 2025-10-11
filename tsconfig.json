@@ -11,10 +11,11 @@
     "strict": true,
     "strictNullChecks": true,
     "baseUrl": ".",
+    "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["./src/shared/*"],
-      "@modules/*": ["./src/modules/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/modules/*": ["./src/modules/*"],
       "@/database": ["./src/database"],
       "@/database/*": ["./src/database/*"],
       "@/schema": ["./src/schema"],

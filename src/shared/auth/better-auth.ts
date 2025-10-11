@@ -1,18 +1,19 @@
 // src/better-auth.ts
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { jwt, bearer, organization, multiSession } from 'better-auth/plugins';
+import { bearer, organization, multiSession } from 'better-auth/plugins';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@/schema';
 import { eq, and } from 'drizzle-orm';
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
+import { EventType } from '@/shared/events/enums/event-types';
 
 /**
  * Create Better Auth instance with database connection
  * This is called once during plugin initialization
  */
-function createAuthInstance(db: NodePgDatabase) {
+function createAuthInstance(db: NodePgDatabase, fastify?: FastifyInstance) {
   return betterAuth({
     secret: process.env.BETTER_AUTH_SECRET,
 
@@ -20,21 +21,50 @@ function createAuthInstance(db: NodePgDatabase) {
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema,
+      usePlural: true,
     }),
 
     // Plugins
-    plugins: [
-      jwt(),
-      bearer(),
-      organization(),
-      multiSession({ maximumSessions: 1 }),
-    ],
+    plugins: [bearer(), organization(), multiSession({ maximumSessions: 1 })],
 
     // Base path for auth routes (server already adds /api prefix)
     basePath: '/auth',
 
     // Database hooks for session management
     databaseHooks: {
+      user: {
+        create: {
+          after: async (userData: {
+            id: string;
+            email: string;
+            name: string;
+            [key: string]: unknown;
+          }) => {
+            // Publish user created event if events are available
+            if (fastify?.events) {
+              try {
+                await fastify.events.publish({
+                  eventType: EventType.USER_CREATED,
+                  eventVersion: '1.0.0',
+                  actorId: userData.id,
+                  actorType: 'user',
+                  payload: {
+                    userId: userData.id,
+                    email: userData.email,
+                    name: userData.name,
+                  },
+                  metadata: fastify.events.createMetadata('auth'),
+                });
+              } catch (error) {
+                fastify.log.error(
+                  { error, userId: userData.id },
+                  'Failed to publish user created event',
+                );
+              }
+            }
+          },
+        },
+      },
       session: {
         create: {
           before: async (sessionData: {
@@ -44,62 +74,114 @@ function createAuthInstance(db: NodePgDatabase) {
             // Get last active organization
             const lastActiveSession = await db
               .select({
-                activeOrganizationId: schema.session.activeOrganizationId,
+                activeOrganizationId: schema.sessions.activeOrganizationId,
               })
-              .from(schema.session)
-              .where(eq(schema.session.userId, sessionData.userId))
+              .from(schema.sessions)
+              .where(eq(schema.sessions.userId, sessionData.userId))
               .limit(1);
 
             // Delete old sessions (maximumSessions: 1)
             await db
-              .delete(schema.session)
-              .where(eq(schema.session.userId, sessionData.userId));
+              .delete(schema.sessions)
+              .where(eq(schema.sessions.userId, sessionData.userId));
 
-            // Determine active organization
+            // Determine active organization (optional - can be null for users exploring the app)
             let activeOrganizationId: string | null = null;
-            if (
-              lastActiveSession.length > 0 &&
-              lastActiveSession[0].activeOrganizationId
-            ) {
-              // Validate that the previous active organization still exists and user has access
-              const orgValidation = await db
-                .select({ id: schema.organization.id })
-                .from(schema.organization)
-                .innerJoin(
-                  schema.member,
-                  eq(schema.organization.id, schema.member.organizationId),
-                )
-                .where(
-                  and(
-                    eq(
-                      schema.organization.id,
-                      lastActiveSession[0].activeOrganizationId,
+
+            try {
+              if (
+                lastActiveSession.length > 0 &&
+                lastActiveSession[0].activeOrganizationId
+              ) {
+                // Validate that the previous active organization still exists and user has access
+                const orgValidation = await db
+                  .select({ id: schema.organizations.id })
+                  .from(schema.organizations)
+                  .innerJoin(
+                    schema.members,
+                    eq(schema.organizations.id, schema.members.organizationId),
+                  )
+                  .where(
+                    and(
+                      eq(
+                        schema.organizations.id,
+                        lastActiveSession[0].activeOrganizationId,
+                      ),
+                      eq(schema.members.userId, sessionData.userId),
                     ),
-                    eq(schema.member.userId, sessionData.userId),
-                  ),
-                )
-                .limit(1);
+                  )
+                  .limit(1);
 
-              if (orgValidation.length > 0) {
-                activeOrganizationId =
-                  lastActiveSession[0].activeOrganizationId;
+                if (orgValidation.length > 0) {
+                  activeOrganizationId =
+                    lastActiveSession[0].activeOrganizationId;
+                }
               }
-            }
 
-            // If no valid active organization from previous session, get first available
-            if (!activeOrganizationId) {
-              const userOrgs = await db
-                .select({ organizationId: schema.member.organizationId })
-                .from(schema.member)
-                .where(eq(schema.member.userId, sessionData.userId))
-                .limit(1);
+              // If no valid active organization from previous session, get first available
+              if (!activeOrganizationId) {
+                const userOrgs = await db
+                  .select({ organizationId: schema.members.organizationId })
+                  .from(schema.members)
+                  .where(eq(schema.members.userId, sessionData.userId))
+                  .limit(1);
 
-              if (userOrgs.length > 0) {
-                activeOrganizationId = userOrgs[0].organizationId;
+                if (userOrgs.length > 0) {
+                  activeOrganizationId = userOrgs[0].organizationId;
+                }
+                // If still no organization, that's OK - user can explore without one
               }
+            } catch (error) {
+              // If anything fails, just continue without an organization
+              // Users can still access the app and create organizations later
+              fastify?.log.warn(
+                { error, userId: sessionData.userId },
+                'Failed to set active organization, continuing without one',
+              );
             }
 
             return { data: { ...sessionData, activeOrganizationId } };
+          },
+          after: async (sessionData: {
+            userId: string;
+            id: string;
+            [key: string]: unknown;
+          }) => {
+            // Publish session created event if events are available
+            if (fastify?.events) {
+              try {
+                // Publish user logged in event
+                await fastify.events.publish({
+                  eventType: EventType.AUTH_USER_LOGGED_IN,
+                  eventVersion: '1.0.0',
+                  actorId: sessionData.userId,
+                  actorType: 'user',
+                  payload: {
+                    sessionId: sessionData.id,
+                    activeOrganizationId: sessionData.activeOrganizationId,
+                  },
+                  metadata: fastify.events.createMetadata('auth'),
+                });
+
+                // Also publish session created event
+                await fastify.events.publish({
+                  eventType: EventType.SESSION_CREATED,
+                  eventVersion: '1.0.0',
+                  actorId: sessionData.userId,
+                  actorType: 'user',
+                  payload: {
+                    sessionId: sessionData.id,
+                    activeOrganizationId: sessionData.activeOrganizationId,
+                  },
+                  metadata: fastify.events.createMetadata('auth'),
+                });
+              } catch (error) {
+                fastify.log.error(
+                  { error, userId: sessionData.userId },
+                  'Failed to publish session created event',
+                );
+              }
+            }
           },
         },
       },
@@ -165,8 +247,8 @@ const betterAuthPlugin = fp(async function betterAuthPlugin(
     );
   }
 
-  // Create auth instance with database
-  const auth = createAuthInstance(fastify.db);
+  // Create auth instance with database and fastify instance for events
+  const auth = createAuthInstance(fastify.db, fastify);
 
   // Decorate Fastify instance with auth
   fastify.decorate('betterAuth', auth);

@@ -1,4 +1,10 @@
-import { settingsRepository } from '../repositories/settings.repository';
+import {
+  findByEntity,
+  findByEntityAndCategory,
+  upsert,
+  addToHistory,
+  getHistory,
+} from '@/modules/settings/repositories/settings.repository';
 import {
   userPreferencesSchema,
   userProfileSchema,
@@ -10,6 +16,12 @@ import {
   organizationIntegrationsSchema,
   organizationFeaturesSchema,
 } from '../schemas/settings.schema';
+import { EventType } from '@/shared/events/enums/event-types';
+import type { FastifyInstance } from 'fastify';
+import {
+  publishUserEvent,
+  publishPracticeEvent,
+} from '@/shared/events/event-publisher';
 
 type UpdateSettingsDto = {
   [key: string]: any;
@@ -17,7 +29,7 @@ type UpdateSettingsDto = {
 
 // User Settings
 export const getUserSettings = async (userId: string) => {
-  const settings = await settingsRepository.findByEntity('user', userId);
+  const settings = await findByEntity('user', userId);
 
   // Convert to object format
   const result: any = {};
@@ -37,13 +49,14 @@ export const updateUserSettings = async (
   userId: string,
   data: UpdateSettingsDto,
   changedBy: string,
+  fastify?: FastifyInstance,
 ) => {
   const result: any = {};
 
   // Update each category
   for (const [category, categoryData] of Object.entries(data)) {
     if (categoryData) {
-      const oldSetting = await settingsRepository.findByEntityAndCategory(
+      const oldSetting = await findByEntityAndCategory(
         'user',
         userId,
         category,
@@ -51,7 +64,7 @@ export const updateUserSettings = async (
 
       const oldValue = oldSetting?.data;
 
-      await settingsRepository.upsert({
+      await upsert({
         entityType: 'user',
         entityId: userId,
         category,
@@ -59,7 +72,7 @@ export const updateUserSettings = async (
       });
 
       // Add to history
-      await settingsRepository.addToHistory({
+      await addToHistory({
         entityType: 'user',
         entityId: userId,
         changedBy,
@@ -72,6 +85,15 @@ export const updateUserSettings = async (
     }
   }
 
+  // Publish user settings updated event
+  if (fastify?.events) {
+    await publishUserEvent(fastify, EventType.USER_SETTINGS_UPDATED, userId, {
+      changedBy,
+      categories: Object.keys(data),
+      settings: result,
+    });
+  }
+
   return result;
 };
 
@@ -81,15 +103,11 @@ export const updateUserSettingsCategory = async (
   data: UpdateSettingsDto,
   changedBy: string,
 ) => {
-  const oldSetting = await settingsRepository.findByEntityAndCategory(
-    'user',
-    userId,
-    category,
-  );
+  const oldSetting = await findByEntityAndCategory('user', userId, category);
 
   const oldValue = oldSetting?.data;
 
-  await settingsRepository.upsert({
+  await upsert({
     entityType: 'user',
     entityId: userId,
     category,
@@ -97,7 +115,7 @@ export const updateUserSettingsCategory = async (
   });
 
   // Add to history
-  await settingsRepository.addToHistory({
+  await addToHistory({
     entityType: 'user',
     entityId: userId,
     changedBy,
@@ -111,10 +129,7 @@ export const updateUserSettingsCategory = async (
 
 // Organization Settings
 export const getOrganizationSettings = async (organizationId: string) => {
-  const settings = await settingsRepository.findByEntity(
-    'organization',
-    organizationId,
-  );
+  const settings = await findByEntity('organization', organizationId);
 
   // Convert to object format
   const result: any = {};
@@ -143,13 +158,14 @@ export const updateOrganizationSettings = async (
   organizationId: string,
   data: UpdateSettingsDto,
   changedBy: string,
+  fastify?: FastifyInstance,
 ) => {
   const result: any = {};
 
   // Update each category
   for (const [category, categoryData] of Object.entries(data)) {
     if (categoryData) {
-      const oldSetting = await settingsRepository.findByEntityAndCategory(
+      const oldSetting = await findByEntityAndCategory(
         'organization',
         organizationId,
         category,
@@ -157,7 +173,7 @@ export const updateOrganizationSettings = async (
 
       const oldValue = oldSetting?.data;
 
-      await settingsRepository.upsert({
+      await upsert({
         entityType: 'organization',
         entityId: organizationId,
         category,
@@ -165,7 +181,7 @@ export const updateOrganizationSettings = async (
       });
 
       // Add to history
-      await settingsRepository.addToHistory({
+      await addToHistory({
         entityType: 'organization',
         entityId: organizationId,
         changedBy,
@@ -178,6 +194,21 @@ export const updateOrganizationSettings = async (
     }
   }
 
+  // Publish practice settings updated event
+  if (fastify?.events) {
+    await publishPracticeEvent(
+      fastify,
+      EventType.PRACTICE_SETTINGS_UPDATED,
+      changedBy,
+      organizationId,
+      {
+        changedBy,
+        categories: Object.keys(data),
+        settings: result,
+      },
+    );
+  }
+
   return result;
 };
 
@@ -187,7 +218,7 @@ export const updateOrganizationSettingsCategory = async (
   data: UpdateSettingsDto,
   changedBy: string,
 ) => {
-  const oldSetting = await settingsRepository.findByEntityAndCategory(
+  const oldSetting = await findByEntityAndCategory(
     'organization',
     organizationId,
     category,
@@ -195,7 +226,7 @@ export const updateOrganizationSettingsCategory = async (
 
   const oldValue = oldSetting?.data;
 
-  await settingsRepository.upsert({
+  await upsert({
     entityType: 'organization',
     entityId: organizationId,
     category,
@@ -203,7 +234,7 @@ export const updateOrganizationSettingsCategory = async (
   });
 
   // Add to history
-  await settingsRepository.addToHistory({
+  await addToHistory({
     entityType: 'organization',
     entityId: organizationId,
     changedBy,
@@ -221,5 +252,5 @@ export const getSettingsHistory = async (
   entityId: string,
   limit: number = 50,
 ) => {
-  return settingsRepository.getHistory(entityType, entityId, limit);
+  return getHistory(entityType, entityId, limit);
 };

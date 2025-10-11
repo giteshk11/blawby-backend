@@ -22,6 +22,4 @@ export default async function getUserSettingsHistoryRoute(
   return reply.send({ data: history });
 }
 
-export const config = {
-  
-};
+export const config = {};

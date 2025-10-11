@@ -3,9 +3,9 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import {
-  session as sessionTable,
-  organization as organizationTable,
-  member as memberTable,
+  sessions as sessionTable,
+  organizations as organizationTable,
+  members as memberTable,
 } from '@/schema';
 
 // Extend Fastify types
@@ -44,9 +44,14 @@ export default fp(async function authCore(fastify: FastifyInstance) {
           headers: request.headers as Record<string, string>,
         });
 
-        fastify.log.info(`Session result: ${session ? 'valid' : 'null'}`);
+        fastify.log.info(
+          `Session result: ${session ? JSON.stringify({ userId: session.user?.id, sessionId: session.session?.id, hasOrg: !!session.session?.activeOrganizationId }) : 'null'}`,
+        );
 
         if (!session) {
+          fastify.log.warn(
+            'Session validation failed - token may be expired or invalid',
+          );
           return reply.unauthorized('Invalid or expired session');
         }
 
@@ -93,7 +98,21 @@ export default fp(async function authCore(fastify: FastifyInstance) {
         request.session = session.session;
         request.userId = session.user.id;
         request.activeOrganizationId = activeOrganizationId;
-      } catch {
+      } catch (error) {
+        fastify.log.error(
+          {
+            error:
+              error instanceof Error
+                ? {
+                    name: error.name,
+                    message: error.message,
+                    cause: (error as any).cause,
+                  }
+                : error,
+            headers: request.headers.authorization?.substring(0, 20),
+          },
+          'Authentication error',
+        );
         return reply.unauthorized('Authentication failed');
       }
     },

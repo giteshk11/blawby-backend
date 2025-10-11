@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { updateOrganizationSettingsCategory } from '@/modules/settings/services/settings.service';
-import { z } from 'zod';
 
 type UpdateOrganizationSettingsCategoryRequest = {
   Params: {
@@ -35,6 +34,4 @@ export default async function updateOrganizationSettingsCategoryRoute(
   return reply.send({ data: settings });
 }
 
-export const config = {
-  
-};
+export const config = {};
