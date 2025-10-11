@@ -1,7 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-export function requireRoles(allowedRoles: string[]) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+export function requireRoles(
+  allowedRoles: string[],
+): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
+  return async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<void> => {
     if (!request.user) {
       return reply.unauthorized('Authentication required');
     }
@@ -14,10 +19,16 @@ export function requireRoles(allowedRoles: string[]) {
   };
 }
 
-export function requireAdmin() {
+export function requireAdmin(): (
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => Promise<void> {
   return requireRoles(['admin']);
 }
 
-export function requireOwner() {
+export function requireOwner(): (
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => Promise<void> {
   return requireRoles(['owner', 'admin']);
 }

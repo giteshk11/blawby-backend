@@ -28,7 +28,7 @@ export type BaseEvent = {
   actorId?: string; // Who/what performed the action (user ID, system, etc.)
   actorType?: string; // Type of actor: 'user', 'system', 'webhook', etc.
   organizationId?: string; // Context where the event happened
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   metadata: EventMetadata;
   processed: boolean;
   retryCount: number;
@@ -73,7 +73,7 @@ export const eventSubscriptions = pgTable('event_subscriptions', {
   eventType: text('event_type').notNull(),
   channel: text('channel').notNull(), // 'email', 'webhook', 'in_app'
   enabled: boolean('enabled').default(true).notNull(),
-  config: json('config').default({}).$type<Record<string, any>>(),
+  config: json('config').default({}).$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

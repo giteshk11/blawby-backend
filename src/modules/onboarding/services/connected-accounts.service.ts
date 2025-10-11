@@ -10,6 +10,8 @@ import {
   createStripeConnectedAccount,
   updateStripeConnectedAccountByStripeId,
   updateLastRefreshed,
+  createSession,
+  revokeOldSessions,
 } from '@/modules/onboarding/repositories/onboarding.repository';
 import type {
   StripeConnectedAccount,
@@ -34,15 +36,30 @@ export const createOrGetAccount = async (
   let account = await findByOrganization(fastify.db, organizationId);
 
   if (account) {
-    // Generate new account session for existing account
+    // Account exists - always create a fresh session
+    // Note: Stripe Connect account sessions can only be claimed once,
+    // so we can't reuse old sessions even if they haven't expired yet
+    fastify.log.info(
+      {
+        context: {
+          organizationId,
+          accountId: account.stripeAccountId,
+        },
+      },
+      'Account exists, creating fresh onboarding session',
+    );
+
+    // Generate a fresh account session
     const session = await createOnboardingSession(
       fastify,
       account.stripeAccountId,
     );
+
     return {
       accountId: account.stripeAccountId,
       clientSecret: session.clientSecret,
       expiresAt: session.expiresAt,
+      sessionStatus: 'created',
       status: {
         chargesEnabled: account.chargesEnabled,
         payoutsEnabled: account.payoutsEnabled,
@@ -112,6 +129,7 @@ export const createOrGetAccount = async (
     accountId: stripeAccount.id,
     clientSecret: session.clientSecret,
     expiresAt: session.expiresAt,
+    sessionStatus: 'created',
     status: {
       chargesEnabled: account.chargesEnabled,
       payoutsEnabled: account.payoutsEnabled,
@@ -124,6 +142,10 @@ export const createOnboardingSession = async (
   fastify: FastifyInstance,
   stripeAccountId: string,
 ): Promise<CreateSessionResponse> => {
+  // Revoke old onboarding sessions first (before creating new one)
+  await revokeOldSessions(fastify.db, stripeAccountId, 'onboarding');
+
+  // Create session with Stripe
   const session = await getStripeAccountSessions().create({
     account: stripeAccountId,
     components: {
@@ -132,6 +154,35 @@ export const createOnboardingSession = async (
       },
     },
   });
+
+  // Store new session in database - ensure UTC timezone
+  const expiresAtUTC = new Date(session.expires_at * 1000);
+  await createSession(fastify.db, {
+    stripeAccountId,
+    sessionType: 'onboarding',
+    clientSecret: session.client_secret,
+    expiresAt: expiresAtUTC,
+  });
+
+  // Log session duration for debugging
+  const sessionDuration = session.expires_at - Math.floor(Date.now() / 1000);
+  const expiresAtDate = new Date(session.expires_at * 1000);
+
+  fastify.log.info(
+    {
+      context: {
+        stripeAccountId,
+        sessionDurationSeconds: sessionDuration,
+        sessionDurationMinutes: Math.round(sessionDuration / 60),
+        sessionDurationHours: Math.round(sessionDuration / 3600),
+        expiresAt: expiresAtDate.toISOString(),
+        expiresAtUnix: session.expires_at,
+        currentTimeUnix: Math.floor(Date.now() / 1000),
+        currentTimeISO: new Date().toISOString(),
+      },
+    },
+    'Stripe Connect session created',
+  );
 
   // Update last refreshed timestamp
   await updateLastRefreshed(fastify.db, stripeAccountId);
@@ -146,6 +197,10 @@ export const createPaymentsSession = async (
   fastify: FastifyInstance,
   stripeAccountId: string,
 ): Promise<CreateSessionResponse> => {
+  // Revoke old payments sessions first (before creating new one)
+  await revokeOldSessions(fastify.db, stripeAccountId, 'payments');
+
+  // Create session with Stripe
   const session = await getStripeAccountSessions().create({
     account: stripeAccountId,
     components: {
@@ -159,6 +214,35 @@ export const createPaymentsSession = async (
       },
     },
   });
+
+  // Store new session in database - ensure UTC timezone
+  const expiresAtUTC = new Date(session.expires_at * 1000);
+  await createSession(fastify.db, {
+    stripeAccountId,
+    sessionType: 'payments',
+    clientSecret: session.client_secret,
+    expiresAt: expiresAtUTC,
+  });
+
+  // Log session duration for debugging
+  const sessionDuration = session.expires_at - Math.floor(Date.now() / 1000);
+  const expiresAtDate = new Date(session.expires_at * 1000);
+
+  fastify.log.info(
+    {
+      context: {
+        stripeAccountId,
+        sessionDurationSeconds: sessionDuration,
+        sessionDurationMinutes: Math.round(sessionDuration / 60),
+        sessionDurationHours: Math.round(sessionDuration / 3600),
+        expiresAt: expiresAtDate.toISOString(),
+        expiresAtUnix: session.expires_at,
+        currentTimeUnix: Math.floor(Date.now() / 1000),
+        currentTimeISO: new Date().toISOString(),
+      },
+    },
+    'Stripe Connect payments session created',
+  );
 
   // Update last refreshed timestamp
   await updateLastRefreshed(fastify.db, stripeAccountId);

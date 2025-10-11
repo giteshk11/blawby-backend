@@ -2,5 +2,5 @@
 export * from './schemas';
 export * from './services';
 export * from './repositories';
-export * from './routes.config';
+export { routeConfig } from './routes.config';
 

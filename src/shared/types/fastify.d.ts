@@ -14,21 +14,23 @@ declare module 'fastify' {
       id: string;
       email: string;
       name: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     session?: {
       id: string;
       userId: string;
       expiresAt: Date;
-      [key: string]: any;
+      [key: string]: unknown;
     };
     userId?: string;
     activeOrganizationId?: string;
+    startTime?: number;
+    rawBody?: Buffer;
   }
 
   interface FastifyReply {
     // Sensible plugin methods (only error responses)
-    send(payload?: any): FastifyReply;
+    send(payload?: unknown): FastifyReply;
     badRequest(message?: string): FastifyReply;
     unauthorized(message?: string): FastifyReply;
     forbidden(message?: string): FastifyReply;

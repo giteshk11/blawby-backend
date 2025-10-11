@@ -7,19 +7,21 @@ const sendEmail = async (params: {
   to: string;
   subject: string;
   template: string;
-  data?: Record<string, any>;
-}) => {
+  data?: Record<string, unknown>;
+}): void => {
   console.log(`📧 Email sent: ${params.subject} to ${params.to}`);
   // TODO: Implement actual email sending logic
 };
 
 // Mock user service - replace with actual user service
-const getUser = async (_userId: string) => {
+const getUser = async (
+  _userId: string,
+): Promise<{ onboardingCompleted: boolean }> => {
   // TODO: Implement actual user lookup
   return { onboardingCompleted: false };
 };
 
-export const registerEmailHandlers = () => {
+export const registerEmailHandlers = (): void => {
   // Welcome email on signup
   subscribeToEvent(EventType.AUTH_USER_SIGNED_UP, async (event: BaseEvent) => {
     const { email, name } = event.payload;

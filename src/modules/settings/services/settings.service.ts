@@ -22,6 +22,7 @@ import {
   publishUserEvent,
   publishPracticeEvent,
 } from '@/shared/events/event-publisher';
+import { sanitizeError } from '@/shared/utils/logging';
 
 type UpdateSettingsDto = {
   [key: string]: any;
@@ -51,50 +52,85 @@ export const updateUserSettings = async (
   changedBy: string,
   fastify?: FastifyInstance,
 ) => {
-  const result: any = {};
-
-  // Update each category
-  for (const [category, categoryData] of Object.entries(data)) {
-    if (categoryData) {
-      const oldSetting = await findByEntityAndCategory(
-        'user',
-        userId,
-        category,
+  try {
+    if (fastify?.log) {
+      fastify.log.info(
+        {
+          context: {
+            service: 'SettingsService',
+            operation: 'updateUserSettings',
+            userId,
+            changedBy,
+            categories: Object.keys(data),
+          },
+        },
+        'Updating user settings',
       );
-
-      const oldValue = oldSetting?.data;
-
-      await upsert({
-        entityType: 'user',
-        entityId: userId,
-        category,
-        data: categoryData,
-      });
-
-      // Add to history
-      await addToHistory({
-        entityType: 'user',
-        entityId: userId,
-        changedBy,
-        category,
-        oldValue,
-        newValue: categoryData,
-      });
-
-      result[category] = categoryData;
     }
-  }
 
-  // Publish user settings updated event
-  if (fastify?.events) {
-    await publishUserEvent(fastify, EventType.USER_SETTINGS_UPDATED, userId, {
-      changedBy,
-      categories: Object.keys(data),
-      settings: result,
-    });
-  }
+    const result: any = {};
 
-  return result;
+    // Update each category
+    for (const [category, categoryData] of Object.entries(data)) {
+      if (categoryData) {
+        const oldSetting = await findByEntityAndCategory(
+          'user',
+          userId,
+          category,
+        );
+
+        const oldValue = oldSetting?.data;
+
+        await upsert({
+          entityType: 'user',
+          entityId: userId,
+          category,
+          data: categoryData,
+        });
+
+        // Add to history
+        await addToHistory({
+          entityType: 'user',
+          entityId: userId,
+          changedBy,
+          category,
+          oldValue,
+          newValue: categoryData,
+        });
+
+        result[category] = categoryData;
+      }
+    }
+
+    // Publish user settings updated event
+    if (fastify?.events) {
+      await publishUserEvent(fastify, EventType.USER_SETTINGS_UPDATED, userId, {
+        changedBy,
+        categories: Object.keys(data),
+        settings: result,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    if (fastify?.log) {
+      fastify.log.error(
+        {
+          error: sanitizeError(error),
+          context: {
+            service: 'SettingsService',
+            operation: 'updateUserSettings',
+            userId,
+            changedBy,
+            categories: Object.keys(data),
+          },
+        },
+        'Failed to update user settings',
+      );
+    }
+
+    throw error; // Re-throw so global handler also logs it
+  }
 };
 
 export const updateUserSettingsCategory = async (

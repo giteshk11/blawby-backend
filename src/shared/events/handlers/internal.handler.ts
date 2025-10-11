@@ -7,12 +7,12 @@ const notifySlack = async (params: {
   channel: string;
   text: string;
   fields?: Record<string, string>;
-}) => {
+}): void => {
   console.log(`💬 Slack notification to ${params.channel}: ${params.text}`);
   // TODO: Implement actual Slack webhook integration
 };
 
-export const registerInternalHandlers = () => {
+export const registerInternalHandlers = (): void => {
   // Notify team on new signups
   subscribeToEvent(EventType.AUTH_USER_SIGNED_UP, async (event: BaseEvent) => {
     await notifySlack({

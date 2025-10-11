@@ -13,59 +13,118 @@ import type {
   CreateCustomerRequest,
   CreateCustomerResponse,
 } from '@/modules/stripe/schemas/customers.schema';
+import { sanitizeError } from '@/shared/utils/logging';
 
 export const createOrGetCustomer = async (
   fastify: FastifyInstance,
   organizationId: string,
   customerData: CreateCustomerRequest,
 ): Promise<CreateCustomerResponse> => {
-  // Check if customer exists by email
-  let customer = await findByEmail(fastify.db, customerData.email);
+  try {
+    fastify.log.info(
+      {
+        context: {
+          service: 'StripeCustomerService',
+          operation: 'createOrGetCustomer',
+          organizationId,
+          customerEmail: customerData.email,
+          customerName: customerData.name,
+        },
+      },
+      'Creating or getting Stripe customer',
+    );
 
-  if (customer) {
+    // Check if customer exists by email
+    let customer = await findByEmail(fastify.db, customerData.email);
+
+    if (customer) {
+      fastify.log.info(
+        {
+          context: {
+            service: 'StripeCustomerService',
+            operation: 'createOrGetCustomer',
+            organizationId,
+            customerId: customer.id,
+            foundExisting: true,
+          },
+        },
+        'Found existing customer',
+      );
+
+      return {
+        customerId: customer.id,
+        stripeCustomerId: customer.stripeCustomerId,
+        email: customer.email,
+        name: customer.name,
+      };
+    }
+
+    // Create new Stripe customer
+    const stripeCustomer = await getStripeCustomers().create({
+      email: customerData.email,
+      name: customerData.name,
+      phone: customerData.phone,
+      address: customerData.address,
+      metadata: {
+        organizationId,
+        ...customerData.metadata,
+      },
+    });
+
+    // Save to database
+    const newCustomer: NewCustomer = {
+      userId: null, // Optional
+      organizationId,
+      stripeCustomerId: stripeCustomer.id,
+      email: stripeCustomer.email || customerData.email,
+      name: stripeCustomer.name || customerData.name,
+      phone: stripeCustomer.phone || customerData.phone,
+      address: stripeCustomer.address as any,
+      defaultPaymentMethodId:
+        (stripeCustomer.invoice_settings?.default_payment_method as string) ||
+        null,
+      metadata: stripeCustomer.metadata as Record<string, any>,
+    };
+
+    customer = await createCustomer(fastify.db, newCustomer);
+
+    fastify.log.info(
+      {
+        context: {
+          service: 'StripeCustomerService',
+          operation: 'createOrGetCustomer',
+          organizationId,
+          customerId: customer.id,
+          stripeCustomerId: customer.stripeCustomerId,
+          createdNew: true,
+        },
+      },
+      'Created new Stripe customer',
+    );
+
     return {
       customerId: customer.id,
       stripeCustomerId: customer.stripeCustomerId,
       email: customer.email,
       name: customer.name,
     };
+  } catch (error) {
+    fastify.log.error(
+      {
+        error: sanitizeError(error),
+        context: {
+          service: 'StripeCustomerService',
+          operation: 'createOrGetCustomer',
+          organizationId,
+          customerEmail: customerData.email,
+          customerName: customerData.name,
+        },
+      },
+      'Failed to create or get Stripe customer',
+    );
+
+    throw error; // Re-throw so global handler also logs it
   }
-
-  // Create new Stripe customer
-  const stripeCustomer = await getStripeCustomers().create({
-    email: customerData.email,
-    name: customerData.name,
-    phone: customerData.phone,
-    address: customerData.address,
-    metadata: {
-      organizationId,
-      ...customerData.metadata,
-    },
-  });
-
-  // Save to database
-  const newCustomer: NewCustomer = {
-    userId: null, // Optional
-    organizationId,
-    stripeCustomerId: stripeCustomer.id,
-    email: stripeCustomer.email || customerData.email,
-    name: stripeCustomer.name || customerData.name,
-    phone: stripeCustomer.phone || customerData.phone,
-    address: stripeCustomer.address as any,
-    defaultPaymentMethodId:
-      (stripeCustomer.invoice_settings?.default_payment_method as string) ||
-      null,
-    metadata: stripeCustomer.metadata as Record<string, any>,
-  };
-
-  customer = await createCustomer(fastify.db, newCustomer);
-
-  return {
-    customerId: customer.id,
-    stripeCustomerId: customer.stripeCustomerId,
-    email: customer.email,
-    name: customer.name,
-  };
 };
 
 export const getCustomer = async (

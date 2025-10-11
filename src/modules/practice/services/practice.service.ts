@@ -19,6 +19,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishEvent } from '@/shared/events/dispatcher';
+import { sanitizeError } from '@/shared/utils/logging';
 
 type User = {
   id: string;
@@ -69,92 +70,127 @@ export const createPracticeService = async (
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
 ) => {
-  console.log(
-    '🔍 createPracticeService called with data:',
-    JSON.stringify(data, null, 2),
-  );
-
-  // Extract practice details (optional fields)
-  const {
-    businessPhone,
-    businessEmail,
-    consultationFee,
-    paymentUrl,
-    calendlyUrl,
-    ...organizationData
-  } = data;
-
-  // Create organization in Better Auth (all validation comes from Better Auth org plugin)
-  const organization = await createOrganization(
-    organizationData,
-    user,
-    fastify,
-    requestHeaders,
-  );
-
-  if (!organization) {
-    throw fastify.httpErrors.internalServerError(
-      'Failed to create organization',
+  try {
+    fastify.log.info(
+      {
+        context: {
+          service: 'PracticeService',
+          operation: 'createPractice',
+          userId: user.id,
+          userEmail: user.email,
+          practiceData: {
+            name: data.name,
+            slug: data.slug,
+            hasBusinessPhone: !!data.businessPhone,
+            hasBusinessEmail: !!data.businessEmail,
+          },
+        },
+      },
+      'Creating new practice',
     );
-  }
 
-  // Create optional practice details if provided
-  let practiceDetails = null;
-  if (
-    businessPhone ||
-    businessEmail ||
-    consultationFee ||
-    paymentUrl ||
-    calendlyUrl
-  ) {
-    practiceDetails = await createPracticeDetails({
-      organizationId: organization.id,
+    // Extract practice details (optional fields)
+    const {
       businessPhone,
       businessEmail,
       consultationFee,
       paymentUrl,
       calendlyUrl,
-      userId: user.id,
-    });
+      ...organizationData
+    } = data;
 
-    // Publish practice details created event
-    await publishEvent({
+    // Create organization in Better Auth (all validation comes from Better Auth org plugin)
+    const organization = await createOrganization(
+      organizationData,
+      user,
       fastify,
-      eventType: EventType.PRACTICE_DETAILS_CREATED,
-      actorId: user.id,
-      organizationId: organization.id,
-      data: {
-        practiceDetailsId: practiceDetails.id,
+      requestHeaders,
+    );
+
+    if (!organization) {
+      throw fastify.httpErrors.internalServerError(
+        'Failed to create organization',
+      );
+    }
+
+    // Create optional practice details if provided
+    let practiceDetails = null;
+    if (
+      businessPhone ||
+      businessEmail ||
+      consultationFee ||
+      paymentUrl ||
+      calendlyUrl
+    ) {
+      practiceDetails = await createPracticeDetails({
+        organizationId: organization.id,
         businessPhone,
         businessEmail,
         consultationFee,
         paymentUrl,
         calendlyUrl,
+        userId: user.id,
+      });
+
+      // Publish practice details created event
+      await publishEvent({
+        fastify,
+        eventType: EventType.PRACTICE_DETAILS_CREATED,
+        actorId: user.id,
+        organizationId: organization.id,
+        data: {
+          practiceDetailsId: practiceDetails.id,
+          businessPhone,
+          businessEmail,
+          consultationFee,
+          paymentUrl,
+          calendlyUrl,
+        },
+        headers: requestHeaders,
+      });
+    }
+
+    // Publish practice created event (organization + optional details)
+    await publishEvent({
+      fastify,
+      eventType: EventType.PRACTICE_CREATED,
+      actorId: user.id,
+      organizationId: organization.id,
+      data: {
+        organizationName: organization.name,
+        organizationSlug: organization.slug,
+        hasPracticeDetails: !!practiceDetails,
+        practiceDetailsId: practiceDetails?.id,
+        userEmail: user.email,
       },
       headers: requestHeaders,
     });
+
+    return {
+      ...organization,
+      practiceDetails,
+    };
+  } catch (error) {
+    // Add business context for debugging
+    fastify.log.error(
+      {
+        error: sanitizeError(error),
+        context: {
+          service: 'PracticeService',
+          operation: 'createPractice',
+          userId: user.id,
+          userEmail: user.email,
+          practiceData: {
+            name: data.name,
+            slug: data.slug,
+          },
+        },
+      },
+      'Failed to create practice',
+    );
+
+    throw error; // Re-throw so global handler also logs it
   }
-
-  // Publish practice created event (organization + optional details)
-  await publishEvent({
-    fastify,
-    eventType: EventType.PRACTICE_CREATED,
-    actorId: user.id,
-    organizationId: organization.id,
-    data: {
-      organizationName: organization.name,
-      organizationSlug: organization.slug,
-      hasPracticeDetails: !!practiceDetails,
-      practiceDetailsId: practiceDetails?.id,
-      userEmail: user.email,
-    },
-    headers: requestHeaders,
-  });
-
-  return {
-    ...organization,
-    practiceDetails,
-  };
 };
 
 export const updatePracticeService = async (

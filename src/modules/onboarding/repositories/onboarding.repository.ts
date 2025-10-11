@@ -1,10 +1,12 @@
-import { eq, and, lte } from 'drizzle-orm';
+import { eq, and, lte, gt } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   stripeConnectedAccounts,
+  stripeAccountSessions,
   webhookEvents,
   type StripeConnectedAccount,
   type NewStripeConnectedAccount,
+  type StripeAccountSession,
   type WebhookEvent,
   type NewWebhookEvent,
 } from '@/modules/onboarding/schemas/onboarding.schema';
@@ -201,4 +203,101 @@ const findWebhookById = async (
     .limit(1);
 
   return events[0] || null;
+};
+
+// ============ Session Repository Methods ============
+
+/**
+ * Get active session for an account
+ * Returns only sessions that are active and not expired
+ */
+export const getActiveSession = async (
+  db: NodePgDatabase,
+  stripeAccountId: string,
+  sessionType: 'onboarding' | 'payments' | 'payouts' = 'onboarding',
+): Promise<StripeAccountSession | null> => {
+  const now = new Date();
+
+  const sessions = await db
+    .select()
+    .from(stripeAccountSessions)
+    .where(
+      and(
+        eq(stripeAccountSessions.stripeAccountId, stripeAccountId),
+        eq(stripeAccountSessions.sessionType, sessionType),
+        eq(stripeAccountSessions.isActive, true),
+        gt(stripeAccountSessions.expiresAt, now),
+      ),
+    )
+    .limit(1);
+
+  const session = sessions[0] || null;
+
+  // Debug logging
+  if (session) {
+    console.log('Found active session:', {
+      sessionId: session.id,
+      expiresAt: session.expiresAt,
+      now: now,
+      timeUntilExpiry: session.expiresAt.getTime() - now.getTime(),
+      timeUntilExpiryMinutes: Math.round(
+        (session.expiresAt.getTime() - now.getTime()) / (1000 * 60),
+      ),
+    });
+  } else {
+    console.log('No active session found for:', {
+      stripeAccountId,
+      sessionType,
+      now: now,
+    });
+  }
+
+  return session;
+};
+
+/**
+ * Create new session in database
+ */
+export const createSession = async (
+  db: NodePgDatabase,
+  data: {
+    stripeAccountId: string;
+    sessionType: string;
+    clientSecret: string;
+    expiresAt: Date;
+  },
+): Promise<StripeAccountSession> => {
+  const sessions = await db
+    .insert(stripeAccountSessions)
+    .values({
+      ...data,
+      isActive: true,
+    })
+    .returning();
+
+  return sessions[0];
+};
+
+/**
+ * Revoke old sessions when creating a new one
+ * Marks all active sessions of the same type as inactive
+ */
+export const revokeOldSessions = async (
+  db: NodePgDatabase,
+  stripeAccountId: string,
+  sessionType: string,
+): Promise<void> => {
+  await db
+    .update(stripeAccountSessions)
+    .set({
+      isActive: false,
+      revokedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(stripeAccountSessions.stripeAccountId, stripeAccountId),
+        eq(stripeAccountSessions.sessionType, sessionType),
+        eq(stripeAccountSessions.isActive, true),
+      ),
+    );
 };

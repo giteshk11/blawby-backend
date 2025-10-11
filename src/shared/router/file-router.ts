@@ -1,6 +1,8 @@
 import type {
   FastifyInstance,
   FastifyPluginAsync,
+  FastifyRequest,
+  FastifyReply,
   RouteOptions,
 } from 'fastify';
 import fp from 'fastify-plugin';
@@ -22,9 +24,13 @@ const HTTP_METHODS = [
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 interface RouteModule {
-  default: (request: any, reply: any) => Promise<any>;
+  default: (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) => Promise<FastifyReply>;
   config?: {
     schema?: RouteOptions['schema'];
+    config?: RouteOptions['config'];
   };
 }
 
@@ -110,7 +116,9 @@ function isRoutePublic(
 /**
  * Register all file-based routes from modules directory
  */
-export async function registerFileRoutes(fastify: FastifyInstance) {
+export async function registerFileRoutes(
+  fastify: FastifyInstance,
+): Promise<void> {
   const modulesDir = join(process.cwd(), 'src/modules');
 
   fastify.log.info('🚀 Starting file-based route registration...');
@@ -127,7 +135,7 @@ export async function registerFileRoutes(fastify: FastifyInstance) {
   // Find all route files manually
   const files: string[] = [];
 
-  function findRouteFiles(dir: string, basePath: string = '') {
+  function findRouteFiles(dir: string, basePath: string = ''): void {
     const items = readdirSync(dir);
     for (const item of items) {
       const fullPath = join(dir, item);
@@ -145,7 +153,7 @@ export async function registerFileRoutes(fastify: FastifyInstance) {
 
   findRouteFiles(modulesDir);
 
-  fastify.log.info(`📁 Found ${files.length} route files:`, files);
+  fastify.log.info({ files }, `📁 Found ${files.length} route files:`);
 
   // Group files by module for config loading
   const filesByModule = new Map<string, string[]>();
@@ -162,7 +170,7 @@ export async function registerFileRoutes(fastify: FastifyInstance) {
     const modulePath = join(modulesDir, moduleName);
     const routeConfig = await loadRouteConfig(modulePath);
 
-    fastify.log.info(`📋 Module ${moduleName} config:`, routeConfig);
+    fastify.log.info({ routeConfig }, `📋 Module ${moduleName} config:`);
 
     for (const file of moduleFiles) {
       try {
@@ -219,10 +227,11 @@ export async function registerFileRoutes(fastify: FastifyInstance) {
         // Register route
         try {
           fastify.route({
-            method: method.toUpperCase() as any,
+            method: method.toUpperCase() as HttpMethod,
             url: fullUrl,
             preHandler: preHandlers.length > 0 ? preHandlers : undefined,
             schema: routeModule.config?.schema, // Optional schema from config
+            config: routeModule.config?.config, // Pass through other config options
             handler: routeModule.default,
           });
 
@@ -230,10 +239,10 @@ export async function registerFileRoutes(fastify: FastifyInstance) {
             `✅ Registered: ${method.toUpperCase().padEnd(6)} ${fullUrl}`,
           );
         } catch (error) {
-          fastify.log.error(`Failed to register route ${fullUrl}:`, error);
+          fastify.log.error({ error }, `Failed to register route ${fullUrl}`);
         }
       } catch (error) {
-        fastify.log.error(`Failed to register route ${file}:`, error);
+        fastify.log.error({ error }, `Failed to register route ${file}`);
       }
     }
   }

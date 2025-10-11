@@ -14,7 +14,7 @@ eventBus.setMaxListeners(50); // Support many handlers
 export const subscribeToEvent = (
   eventType: string,
   handler: (event: BaseEvent) => Promise<void>,
-) => {
+): void => {
   eventBus.on(eventType, async (event) => {
     try {
       await handler(event);
@@ -28,7 +28,7 @@ export const subscribeToEvent = (
 // Subscribe to all events
 export const subscribeToAllEvents = (
   handler: (event: BaseEvent) => Promise<void>,
-) => {
+): void => {
   eventBus.on('*', async (event) => {
     try {
       await handler(event);
@@ -43,25 +43,28 @@ export const subscribeToAllEvents = (
 export const unsubscribeFromEvent = (
   eventType: string,
   handler: (event: BaseEvent) => Promise<void>,
-) => {
+): void => {
   eventBus.off(eventType, handler);
 };
 
 // Remove all event subscription
 export const unsubscribeFromAllEvents = (
   handler: (event: BaseEvent) => Promise<void>,
-) => {
+): void => {
   eventBus.off('*', handler);
 };
 
-const markEventAsProcessed = async (eventId: string) => {
+const markEventAsProcessed = async (eventId: string): Promise<void> => {
   await db
     .update(events)
     .set({ processed: true, processedAt: new Date() })
     .where(eq(events.eventId, eventId));
 };
 
-const handleEventFailure = async (event: BaseEvent, error: any) => {
+const handleEventFailure = async (
+  event: BaseEvent,
+  error: unknown,
+): Promise<void> => {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
   await db
@@ -74,13 +77,21 @@ const handleEventFailure = async (event: BaseEvent, error: any) => {
 };
 
 // Get unprocessed events for retry
-export const getUnprocessedEvents = async (limit = 100) => {
-  return await db
+export const getUnprocessedEvents = async (
+  limit = 100,
+): Promise<BaseEvent[]> => {
+  const results = await db
     .select()
     .from(events)
     .where(eq(events.processed, false))
     .limit(limit)
     .orderBy(events.createdAt);
+
+  return results.map((event) => ({
+    ...event,
+    timestamp: event.createdAt,
+    actorId: event.actorId ?? undefined,
+  }));
 };
 
 // Get events by user
@@ -88,14 +99,20 @@ export const getEventsByUser = async (
   userId: string,
   limit = 50,
   offset = 0,
-) => {
-  return await db
+): Promise<BaseEvent[]> => {
+  const results = await db
     .select()
     .from(events)
     .where(eq(events.userId, userId))
     .limit(limit)
     .offset(offset)
     .orderBy(desc(events.createdAt));
+
+  return results.map((event) => ({
+    ...event,
+    timestamp: event.createdAt,
+    actorId: event.actorId ?? undefined,
+  }));
 };
 
 // Get events by organization
@@ -103,12 +120,18 @@ export const getEventsByOrganization = async (
   organizationId: string,
   limit = 50,
   offset = 0,
-) => {
-  return await db
+): Promise<BaseEvent[]> => {
+  const results = await db
     .select()
     .from(events)
     .where(eq(events.organizationId, organizationId))
     .limit(limit)
     .offset(offset)
     .orderBy(desc(events.createdAt));
+
+  return results.map((event) => ({
+    ...event,
+    timestamp: event.createdAt,
+    actorId: event.actorId ?? undefined,
+  }));
 };

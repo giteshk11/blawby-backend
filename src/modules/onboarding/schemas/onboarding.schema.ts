@@ -99,6 +99,22 @@ export const stripeConnectedAccounts = pgTable('stripe_connected_accounts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Stripe account sessions table (normalized)
+export const stripeAccountSessions = pgTable('stripe_account_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  stripeAccountId: text('stripe_account_id')
+    .notNull()
+    .references(() => stripeConnectedAccounts.stripeAccountId, {
+      onDelete: 'cascade',
+    }),
+  sessionType: text('session_type').notNull(), // 'onboarding', 'payments', 'payouts'
+  clientSecret: text('client_secret').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+});
+
 // Webhook events table
 export const webhookEvents = pgTable('webhook_events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -155,8 +171,9 @@ export const createAccountRequestSchema = z.object({
 
 export const createAccountResponseSchema = z.object({
   accountId: z.string(),
-  clientSecret: z.string(),
-  expiresAt: z.number(),
+  clientSecret: z.string().optional(), // Only when sessionStatus = 'valid' or 'created'
+  expiresAt: z.union([z.number(), z.date()]).optional(),
+  sessionStatus: z.enum(['valid', 'expired', 'created']),
   status: z.object({
     chargesEnabled: z.boolean(),
     payoutsEnabled: z.boolean(),
@@ -191,6 +208,8 @@ export type StripeConnectedAccount =
   typeof stripeConnectedAccounts.$inferSelect;
 export type NewStripeConnectedAccount =
   typeof stripeConnectedAccounts.$inferInsert;
+export type StripeAccountSession = typeof stripeAccountSessions.$inferSelect;
+export type NewStripeAccountSession = typeof stripeAccountSessions.$inferInsert;
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
 

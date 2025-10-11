@@ -8,12 +8,16 @@ import { eq, and } from 'drizzle-orm';
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import { EventType } from '@/shared/events/enums/event-types';
+import { sanitizeError } from '@/shared/utils/logging';
 
 /**
  * Create Better Auth instance with database connection
  * This is called once during plugin initialization
  */
-function createAuthInstance(db: NodePgDatabase, fastify?: FastifyInstance) {
+function createAuthInstance(
+  db: NodePgDatabase,
+  fastify?: FastifyInstance,
+): ReturnType<typeof betterAuth> {
   return betterAuth({
     secret: process.env.BETTER_AUTH_SECRET,
 
@@ -214,8 +218,28 @@ function createAuthInstance(db: NodePgDatabase, fastify?: FastifyInstance) {
     // Error handling
     onAPIError: {
       throw: false,
-      onError: (error: unknown) => {
-        console.error('Better Auth error:', error);
+      onError: (error: unknown, context?: Record<string, unknown>): void => {
+        // Enhanced error logging with context
+        const sanitizedError = sanitizeError(error);
+
+        if (fastify?.log) {
+          fastify.log.error(
+            {
+              error: sanitizedError,
+              context: {
+                component: 'BetterAuth',
+                operation: context?.operation || 'unknown',
+                endpoint: context?.endpoint,
+                userId: context?.userId,
+                sessionId: context?.sessionId,
+                ...context,
+              },
+            },
+            'Better Auth API error',
+          );
+        } else {
+          console.error('Better Auth error:', sanitizedError);
+        }
       },
     },
 

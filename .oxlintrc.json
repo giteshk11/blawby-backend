@@ -10,7 +10,9 @@
     "pedantic": "error",
     "style": "error",
     "perf": "error",
-    "nursery": "off"
+    "nursery": "off",
+    "no-explicit-any": "error",
+    "explicit-function-return-type": "error"
   },
   "allow": [
     "no-console",
@@ -62,7 +64,6 @@
   ],
   "deny": [
     "no-unused-vars",
-    "no-explicit-any",
     "no-await-in-loop",
     "no-useless-call",
     "no-accumulating-spread",

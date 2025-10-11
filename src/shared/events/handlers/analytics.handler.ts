@@ -9,9 +9,9 @@ import { EventType } from '@/shared/events/enums/event-types';
 const trackEvent = async (params: {
   event: string;
   userId?: string;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
   timestamp: Date;
-}) => {
+}): Promise<void> => {
   console.log(`📊 Analytics: ${params.event} for user ${params.userId}`);
   // TODO: Implement actual analytics tracking (e.g., Mixpanel, Amplitude)
 };
@@ -21,12 +21,12 @@ const trackConversion = async (params: {
   userId?: string;
   organizationId?: string;
   value: number;
-}) => {
+}): Promise<void> => {
   console.log(`💰 Conversion: ${params.event} - $${params.value}`);
   // TODO: Implement actual conversion tracking
 };
 
-export const registerAnalyticsHandlers = () => {
+export const registerAnalyticsHandlers = (): void => {
   // Track all events to analytics
   subscribeToAllEvents(async (event: BaseEvent) => {
     await trackEvent({
@@ -74,12 +74,11 @@ export const registerAnalyticsHandlers = () => {
     EventType.BILLING_PAYMENT_RECEIVED,
     async (event: BaseEvent) => {
       const { amount } = event.payload;
-      const valueInDollars = amount / 100; // Convert cents to dollars
 
       await trackConversion({
         event: 'payment_received',
         organizationId: event.organizationId,
-        value: valueInDollars,
+        value: amount as number,
       });
     },
   );

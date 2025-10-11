@@ -1,23 +1,34 @@
 import Redis from 'ioredis';
 
-export const redisConnection = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD,
-  db: Number(process.env.REDIS_DB) || 0,
-  maxRetriesPerRequest: null, // REQUIRED for BullMQ
-  enableReadyCheck: false,
-});
+let redisConnection: Redis | null = null;
 
-// Handle Redis connection events
-redisConnection.on('connect', () => {
-  console.log('✅ Redis connected');
-});
+export const getRedisConnection = (): Redis => {
+  if (!redisConnection) {
+    redisConnection = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: Number(process.env.REDIS_PORT) || 6379,
+      password: process.env.REDIS_PASSWORD,
+      db: Number(process.env.REDIS_DB) || 0,
+      maxRetriesPerRequest: null, // REQUIRED for BullMQ
+      enableReadyCheck: false,
+    });
 
-redisConnection.on('error', (error) => {
-  console.error('❌ Redis connection error:', error);
-});
+    // Handle Redis connection events
+    redisConnection.on('connect', () => {
+      console.log('✅ Redis connected');
+    });
 
-redisConnection.on('close', () => {
-  console.log('🔌 Redis connection closed');
-});
+    redisConnection.on('error', (error) => {
+      console.error('❌ Redis connection error:', error);
+    });
+
+    redisConnection.on('close', () => {
+      console.log('🔌 Redis connection closed');
+    });
+  }
+
+  return redisConnection;
+};
+
+// For backward compatibility
+export { getRedisConnection as redisConnection };

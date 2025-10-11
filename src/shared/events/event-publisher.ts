@@ -10,7 +10,7 @@ import type { FastifyInstance } from 'fastify';
 
 export const publishEvent = async (
   event: Omit<BaseEvent, 'eventId' | 'timestamp' | 'processed' | 'retryCount'>,
-) => {
+): Promise<BaseEvent> => {
   const fullEvent: BaseEvent = {
     ...event,
     eventId: crypto.randomUUID(),
@@ -63,9 +63,9 @@ export const publishPracticeEvent = async (
   eventType: EventType,
   actorId: string,
   organizationId: string,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   requestHeaders?: Record<string, string>,
-) => {
+): Promise<BaseEvent> => {
   return fastify.events.publish({
     eventType,
     eventVersion: '1.0.0',
@@ -84,9 +84,9 @@ export const publishUserEvent = async (
   fastify: FastifyInstance,
   eventType: EventType,
   actorId: string,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   requestHeaders?: Record<string, string>,
-) => {
+): Promise<BaseEvent> => {
   return fastify.events.publish({
     eventType,
     eventVersion: '1.0.0',
@@ -103,11 +103,11 @@ export const publishUserEvent = async (
 export const publishSystemEvent = async (
   fastify: FastifyInstance,
   eventType: EventType,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   actorId?: string,
   actorType: string = 'system',
   organizationId?: string,
-) => {
+): Promise<BaseEvent> => {
   return fastify.events.publish({
     eventType,
     eventVersion: '1.0.0',

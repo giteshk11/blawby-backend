@@ -18,7 +18,7 @@ type EventParams = {
   eventType: EventType;
   actorId: string; // Who did it (always required)
   organizationId?: string; // Where it happened (optional)
-  data: any;
+  data: Record<string, unknown>;
   headers?: Record<string, string>;
 };
 
@@ -29,7 +29,7 @@ export const publishEvent = async ({
   organizationId,
   data,
   headers,
-}: EventParams) => {
+}: EventParams): Promise<BaseEvent> => {
   // Determine which publisher to use based on event type
   if (eventType.startsWith('PRACTICE_') || eventType.startsWith('BILLING_')) {
     return publishPracticeEvent(

@@ -14,8 +14,8 @@ declare module 'fastify' {
     verifyAuth(request: FastifyRequest, reply: FastifyReply): Promise<void>;
   }
   interface FastifyRequest {
-    user?: any;
-    session?: any;
+    user?: Record<string, unknown>;
+    session?: Record<string, unknown>;
     userId?: string;
     activeOrganizationId?: string;
   }
@@ -106,7 +106,7 @@ export default fp(async function authCore(fastify: FastifyInstance) {
                 ? {
                     name: error.name,
                     message: error.message,
-                    cause: (error as any).cause,
+                    cause: (error as Error & { cause?: unknown }).cause,
                   }
                 : error,
             headers: request.headers.authorization?.substring(0, 20),
