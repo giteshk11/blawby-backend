@@ -60,9 +60,9 @@ profile*
 # generated code
 examples/typescript-server.js
 test/types/index.js
-src/database/migrations/
 # compiled app
 dist
+dump.db
 
 # .env file
 .env

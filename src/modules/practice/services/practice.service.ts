@@ -228,13 +228,14 @@ export const updatePracticeService = async (
     paymentUrl ||
     calendlyUrl
   ) {
-    practiceDetails = await updatePracticeDetails(organizationId, {
+    const data = {
       businessPhone,
       businessEmail,
       consultationFee,
       paymentUrl,
       calendlyUrl,
-    });
+    };
+    practiceDetails = await updatePracticeDetails(organizationId, data);
 
     // Publish practice details updated event
     await publishEvent({
@@ -242,14 +243,7 @@ export const updatePracticeService = async (
       eventType: EventType.PRACTICE_DETAILS_UPDATED,
       actorId: user.id,
       organizationId,
-      data: {
-        practiceDetailsId: practiceDetails?.id,
-        businessPhone,
-        businessEmail,
-        consultationFee,
-        paymentUrl,
-        calendlyUrl,
-      },
+      data,
       headers: requestHeaders,
     });
   }

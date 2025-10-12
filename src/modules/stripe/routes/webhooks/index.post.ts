@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import Stripe from 'stripe';
-import { getStripeClient } from '@/modules/billing/services/stripe-client.service';
+import { getStripeClient } from '@/shared/services/stripe-client.service';
 import {
   existsByStripeEventId,
   createStripeWebhookEvent,

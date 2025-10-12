@@ -35,42 +35,36 @@ export const registerEmailHandlers = (): void => {
   });
 
   // Onboarding reminder
-  subscribeToEvent(
-    EventType.BILLING_ONBOARDING_STARTED,
-    async (event: BaseEvent) => {
-      // Schedule reminder email in 24h if not completed
-      const { userId, email } = event.payload;
+  subscribeToEvent(EventType.ONBOARDING_STARTED, async (event: BaseEvent) => {
+    // Schedule reminder email in 24h if not completed
+    const { userId, email } = event.payload;
 
-      setTimeout(
-        async () => {
-          const user = await getUser(userId);
-          if (!user.onboardingCompleted) {
-            await sendEmail({
-              to: email,
-              subject: 'Complete your Blawby setup',
-              template: 'onboarding-reminder',
-            });
-          }
-        },
-        24 * 60 * 60 * 1000,
-      ); // 24 hours
-    },
-  );
+    setTimeout(
+      async () => {
+        const user = await getUser(userId);
+        if (!user.onboardingCompleted) {
+          await sendEmail({
+            to: email,
+            subject: 'Complete your Blawby setup',
+            template: 'onboarding-reminder',
+          });
+        }
+      },
+      24 * 60 * 60 * 1000,
+    ); // 24 hours
+  });
 
   // Payment receipt
-  subscribeToEvent(
-    EventType.BILLING_PAYMENT_RECEIVED,
-    async (event: BaseEvent) => {
-      const { customerEmail, amount, currency } = event.payload;
+  subscribeToEvent(EventType.PAYMENT_RECEIVED, async (event: BaseEvent) => {
+    const { customerEmail, amount, currency } = event.payload;
 
-      await sendEmail({
-        to: customerEmail,
-        subject: 'Payment Receipt',
-        template: 'payment-receipt',
-        data: { amount, currency },
-      });
-    },
-  );
+    await sendEmail({
+      to: customerEmail,
+      subject: 'Payment Receipt',
+      template: 'payment-receipt',
+      data: { amount, currency },
+    });
+  });
 
   // Practice created notification
   subscribeToEvent(EventType.PRACTICE_CREATED, async (event: BaseEvent) => {
@@ -84,18 +78,15 @@ export const registerEmailHandlers = (): void => {
     });
   });
 
-  // Billing onboarding completed
-  subscribeToEvent(
-    EventType.BILLING_ONBOARDING_COMPLETED,
-    async (event: BaseEvent) => {
-      const { userEmail, organizationName } = event.payload;
+  // Onboarding completed
+  subscribeToEvent(EventType.ONBOARDING_COMPLETED, async (event: BaseEvent) => {
+    const { userEmail, organizationName } = event.payload;
 
-      await sendEmail({
-        to: userEmail,
-        subject: 'Payment setup completed!',
-        template: 'billing-onboarding-complete',
-        data: { organizationName },
-      });
-    },
-  );
+    await sendEmail({
+      to: userEmail,
+      subject: 'Onboarding completed!',
+      template: 'onboarding-complete',
+      data: { organizationName },
+    });
+  });
 };

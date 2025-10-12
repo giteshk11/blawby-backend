@@ -38,17 +38,14 @@ export const registerAnalyticsHandlers = (): void => {
   });
 
   // Track specific conversion events
-  subscribeToEvent(
-    EventType.BILLING_ONBOARDING_COMPLETED,
-    async (event: BaseEvent) => {
-      await trackConversion({
-        event: 'stripe_connected',
-        userId: event.actorId,
-        organizationId: event.organizationId,
-        value: 0, // or estimated value
-      });
-    },
-  );
+  subscribeToEvent(EventType.ONBOARDING_COMPLETED, async (event: BaseEvent) => {
+    await trackConversion({
+      event: 'stripe_connected',
+      userId: event.actorId,
+      organizationId: event.organizationId,
+      value: 0, // or estimated value
+    });
+  });
 
   // Track user signup conversion
   subscribeToEvent(EventType.AUTH_USER_SIGNED_UP, async (event: BaseEvent) => {
@@ -70,16 +67,13 @@ export const registerAnalyticsHandlers = (): void => {
   });
 
   // Track payment events
-  subscribeToEvent(
-    EventType.BILLING_PAYMENT_RECEIVED,
-    async (event: BaseEvent) => {
-      const { amount } = event.payload;
+  subscribeToEvent(EventType.PAYMENT_RECEIVED, async (event: BaseEvent) => {
+    const { amount } = event.payload;
 
-      await trackConversion({
-        event: 'payment_received',
-        organizationId: event.organizationId,
-        value: amount as number,
-      });
-    },
-  );
+    await trackConversion({
+      event: 'payment_received',
+      organizationId: event.organizationId,
+      value: amount as number,
+    });
+  });
 };

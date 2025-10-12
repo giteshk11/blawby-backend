@@ -9,6 +9,9 @@ import {
   getEventsToRetry,
 } from '@/modules/onboarding/repositories/onboarding.repository';
 import { handleAccountUpdated } from '@/modules/onboarding/services/connected-accounts.service';
+import { CapabilityUpdatedHandler } from '@/modules/onboarding/handlers/capability-updated.handler';
+import { ExternalAccountCreatedHandler } from '@/modules/onboarding/handlers/external-account-created.handler';
+import { ExternalAccountUpdatedHandler } from '@/modules/onboarding/handlers/external-account-updated.handler';
 import type { NewWebhookEvent } from '@/modules/onboarding/schemas/onboarding.schema';
 
 export const verifyAndStore = async (
@@ -43,7 +46,7 @@ export const verifyAndStore = async (
   const newEvent: NewWebhookEvent = {
     stripeEventId: event.id,
     eventType: event.type,
-    payload: event as any,
+    payload: event as unknown,
     headers,
     url,
   };
@@ -76,6 +79,18 @@ export const processEvent = async (
     switch (event.type) {
       case 'account.updated':
         await handleAccountUpdatedWebhook(fastify, event);
+        break;
+
+      case 'capability.updated':
+        await handleCapabilityUpdatedWebhook(fastify, event);
+        break;
+
+      case 'account.external_account.created':
+        await handleExternalAccountCreatedWebhook(fastify, event);
+        break;
+
+      case 'account.external_account.updated':
+        await handleExternalAccountUpdatedWebhook(fastify, event);
         break;
 
       default:
@@ -123,6 +138,55 @@ const handleAccountUpdatedWebhook = async (
   }
 
   await handleAccountUpdated(fastify, account.id, account);
+};
+
+const handleCapabilityUpdatedWebhook = async (
+  fastify: FastifyInstance,
+  event: Stripe.Event,
+): Promise<void> => {
+  const capability = event.data.object as Stripe.Capability;
+
+  if (!capability.account) {
+    fastify.log.error('Account ID missing from capability.updated event');
+    return;
+  }
+
+  const handler = new CapabilityUpdatedHandler(fastify);
+  await handler.handle(event);
+};
+
+const handleExternalAccountCreatedWebhook = async (
+  fastify: FastifyInstance,
+  event: Stripe.Event,
+): Promise<void> => {
+  const externalAccount = event.data.object as Stripe.ExternalAccount;
+
+  if (!externalAccount.account) {
+    fastify.log.error(
+      'Account ID missing from account.external_account.created event',
+    );
+    return;
+  }
+
+  const handler = new ExternalAccountCreatedHandler(fastify);
+  await handler.handle(event);
+};
+
+const handleExternalAccountUpdatedWebhook = async (
+  fastify: FastifyInstance,
+  event: Stripe.Event,
+): Promise<void> => {
+  const externalAccount = event.data.object as Stripe.ExternalAccount;
+
+  if (!externalAccount.account) {
+    fastify.log.error(
+      'Account ID missing from account.external_account.updated event',
+    );
+    return;
+  }
+
+  const handler = new ExternalAccountUpdatedHandler(fastify);
+  await handler.handle(event);
 };
 
 export const retryFailedWebhooks = async (

@@ -112,7 +112,7 @@ export const createOrGetAccount = async (
 
   // Publish billing onboarding started event
   await fastify.events.publish({
-    eventType: EventType.BILLING_ONBOARDING_STARTED,
+    eventType: EventType.ONBOARDING_STARTED,
     eventVersion: '1.0.0',
     actorId: 'system',
     actorType: 'system',
@@ -332,9 +332,9 @@ export const handleAccountUpdated = async (
     updateData.onboardingCompletedAt = new Date();
     fastify.log.info(`Onboarding completed for account: ${stripeAccountId}`);
 
-    // Publish billing onboarding completed event
+    // Publish onboarding completed event
     await fastify.events.publish({
-      eventType: EventType.BILLING_ONBOARDING_COMPLETED,
+      eventType: EventType.ONBOARDING_COMPLETED,
       eventVersion: '1.0.0',
       actorId: 'webhook-stripe',
       actorType: 'webhook',

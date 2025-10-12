@@ -38,7 +38,7 @@ export const customers = pgTable('customers', {
   defaultPaymentMethodId: text('default_payment_method_id'),
 
   // Metadata
-  metadata: json('metadata').$type<Record<string, any>>(),
+  metadata: json('metadata').$type<Record<string, unknown>>(),
 
   // Audit
   createdAt: timestamp('created_at').defaultNow().notNull(),

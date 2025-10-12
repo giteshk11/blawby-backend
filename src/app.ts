@@ -11,6 +11,7 @@ import rawBodyPlugin from './shared/plugins/raw-body.plugin';
 import { registerEmailHandlers } from './shared/events/handlers/email.handler';
 import { registerAnalyticsHandlers } from './shared/events/handlers/analytics.handler';
 import { registerInternalHandlers } from './shared/events/handlers/internal.handler';
+import { registerOnboardingHandlers } from './modules/onboarding/handlers';
 
 // Infrastructure plugins
 import sensiblePlugin from './shared/middleware/sensible';
@@ -63,6 +64,7 @@ export default async function app(fastify: FastifyInstance): Promise<void> {
   registerEmailHandlers();
   registerAnalyticsHandlers();
   registerInternalHandlers();
+  registerOnboardingHandlers();
 
   // 6. File-based routes (auto-discovery)
   await fastify.register(fileRouterPlugin);

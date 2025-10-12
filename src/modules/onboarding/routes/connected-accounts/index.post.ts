@@ -11,7 +11,7 @@ export default async function createConnectedAccountRoute(
     };
   }>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> {
   // Validate request body
   const body = createAccountRequestSchema.parse(request.body);
 
@@ -19,7 +19,7 @@ export default async function createConnectedAccountRoute(
   const organizationId =
     request.user?.organization?.id ||
     request.activeOrganizationId ||
-    (request.body as any).organizationId;
+    (request.body as { organizationId?: string }).organizationId;
 
   if (!organizationId) {
     return reply.badRequest(

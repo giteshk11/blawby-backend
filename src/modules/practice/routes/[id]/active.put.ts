@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { setActivePractice } from '../services/practice.service';
+import { setActivePractice } from '../../services/practice.service';
 
 type SetActivePracticeRequest = {
   Params: {
@@ -14,7 +14,7 @@ type SetActivePracticeRequest = {
 export default async function setActivePracticeRoute(
   request: FastifyRequest<SetActivePracticeRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> {
   const result = await setActivePractice(
     request.params.id,
     request.user,

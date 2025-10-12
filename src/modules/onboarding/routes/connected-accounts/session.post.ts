@@ -8,12 +8,12 @@ import {
 export default async function createOnboardingSessionRoute(
   request: FastifyRequest,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> {
   // Get organization ID from authenticated user or request body (for users without org yet)
   const organizationId =
     request.user?.organization?.id ||
     request.activeOrganizationId ||
-    (request.body as any)?.organizationId;
+    (request.body as { organizationId?: string })?.organizationId;
 
   if (!organizationId) {
     return reply.badRequest(

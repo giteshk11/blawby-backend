@@ -109,8 +109,13 @@ export const stripeAccountSessions = pgTable('stripe_account_sessions', {
     }),
   sessionType: text('session_type').notNull(), // 'onboarding', 'payments', 'payouts'
   clientSecret: text('client_secret').notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', {
+    withTimezone: true,
+    mode: 'date',
+  }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
 });
@@ -165,7 +170,7 @@ export const selectWebhookEventSchema = createSelectSchema(webhookEvents);
 
 // Request/Response schemas
 export const createAccountRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   country: z.string().length(2).default('US'),
 });
 
@@ -218,3 +223,6 @@ export type CreateAccountResponse = z.infer<typeof createAccountResponseSchema>;
 export type GetAccountResponse = z.infer<typeof getAccountResponseSchema>;
 export type CreateSessionResponse = z.infer<typeof createSessionResponseSchema>;
 export type WebhookResponse = z.infer<typeof webhookResponseSchema>;
+
+// Main export
+export { stripeConnectedAccounts as default };

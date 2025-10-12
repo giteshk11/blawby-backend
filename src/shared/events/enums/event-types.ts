@@ -52,20 +52,22 @@ export enum EventType {
   PRACTICE_SETTINGS_UPDATED = 'settings.practice_updated',
   SETTINGS_CATEGORY_UPDATED = 'settings.category_updated',
 
-  // Billing events
-  BILLING_ONBOARDING_STARTED = 'billing.onboarding_started',
-  BILLING_ONBOARDING_COMPLETED = 'billing.onboarding_completed',
-  BILLING_ONBOARDING_FAILED = 'billing.onboarding_failed',
-  BILLING_PAYMENT_SESSION_CREATED = 'billing.payment_session_created',
-  BILLING_PAYMENT_RECEIVED = 'billing.payment_received',
-  BILLING_PAYMENT_FAILED = 'billing.payment_failed',
-  BILLING_PAYMENT_REFUNDED = 'billing.payment_refunded',
-  BILLING_ACCOUNT_UPDATED = 'billing.account_updated',
-  BILLING_ACCOUNT_REQUIREMENTS_CHANGED = 'billing.account_requirements_changed',
-  BILLING_ACCOUNT_CAPABILITIES_UPDATED = 'billing.account_capabilities_updated',
-  BILLING_WEBHOOK_RECEIVED = 'billing.webhook_received',
-  BILLING_WEBHOOK_PROCESSED = 'billing.webhook_processed',
-  BILLING_WEBHOOK_FAILED = 'billing.webhook_failed',
+  // Onboarding events
+  ONBOARDING_STARTED = 'onboarding.started',
+  ONBOARDING_COMPLETED = 'onboarding.completed',
+  ONBOARDING_FAILED = 'onboarding.failed',
+  ONBOARDING_ACCOUNT_UPDATED = 'onboarding.account_updated',
+  ONBOARDING_ACCOUNT_REQUIREMENTS_CHANGED = 'onboarding.account_requirements_changed',
+  ONBOARDING_ACCOUNT_CAPABILITIES_UPDATED = 'onboarding.account_capabilities_updated',
+  ONBOARDING_WEBHOOK_RECEIVED = 'onboarding.webhook_received',
+  ONBOARDING_WEBHOOK_PROCESSED = 'onboarding.webhook_processed',
+  ONBOARDING_WEBHOOK_FAILED = 'onboarding.webhook_failed',
+
+  // Payment events
+  PAYMENT_SESSION_CREATED = 'payment.session_created',
+  PAYMENT_RECEIVED = 'payment.received',
+  PAYMENT_FAILED = 'payment.failed',
+  PAYMENT_REFUNDED = 'payment.refunded',
 
   // System events
   SYSTEM_HEALTH_CHECK_PERFORMED = 'system.health_check_performed',
@@ -96,7 +98,8 @@ export const EVENT_DOMAINS = {
   USER: 'user',
   PRACTICE: 'practice',
   SETTINGS: 'settings',
-  BILLING: 'billing',
+  ONBOARDING: 'onboarding',
+  PAYMENT: 'payment',
   SYSTEM: 'system',
   SESSION: 'session',
 } as const;

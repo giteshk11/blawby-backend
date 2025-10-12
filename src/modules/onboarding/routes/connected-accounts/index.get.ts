@@ -5,7 +5,7 @@ import { getAccount } from '@/modules/onboarding/services/connected-accounts.ser
 export default async function getConnectedAccountRoute(
   request: FastifyRequest,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> {
   // Get organization ID from authenticated user
   const organizationId =
     request.user?.organization?.id || request.activeOrganizationId;

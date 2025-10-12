@@ -25,8 +25,8 @@ import { config } from '@dotenvx/dotenvx';
 config();
 
 // Import webhook processing services
-import { createWebhookProcessor } from '@/modules/billing/services/webhook-processor.service';
 import { webhookEvents } from '@/modules/onboarding/schemas/onboarding.schema';
+import { processEvent } from '@/modules/onboarding/services/webhooks.service';
 import { eq } from 'drizzle-orm';
 import { db } from '@/database';
 
@@ -58,10 +58,10 @@ async function processWebhookJob(job: {
     // 2. Check if already processed (skip if yes)
     if (webhookRecord.processed) {
       console.log(`Webhook already processed: ${eventId}`);
-      return { success: true, eventId, eventType, skipped: true };
+      return;
     }
 
-    // 3. Create webhook processor (mock Fastify instance for worker)
+    // 3. Create mock Fastify instance for worker
     const mockFastify = {
       log: {
         info: (data: unknown, message: string): void =>
@@ -77,58 +77,25 @@ async function processWebhookJob(job: {
         publish: async (event: { eventType: string }): Promise<void> => {
           console.log(`[EVENT] Publishing: ${event.eventType}`);
         },
-        createMetadata: (source: string): { source: string } => ({
+        createMetadata: (
+          source: string,
+        ): { source: string; timestamp: string } => ({
           source,
           timestamp: new Date().toISOString(),
         }),
       },
+      db,
     };
 
-    const webhookProcessor = createWebhookProcessor(
-      mockFastify as unknown as Parameters<typeof createWebhookProcessor>[0],
-    );
-
-    // 4. Process webhook
-    const result = await webhookProcessor.process({
-      id: webhookRecord.id,
-      stripeEventId: webhookRecord.stripeEventId,
-      eventType: webhookRecord.eventType,
-      payload: webhookRecord.payload as Record<string, unknown>,
-      processed: webhookRecord.processed,
-      retryCount: webhookRecord.retryCount,
-      createdAt: webhookRecord.createdAt,
-    });
-
-    // 5. Mark as processed
-    if (result.success) {
-      await db
-        .update(webhookEvents)
-        .set({
-          processed: true,
-          processedAt: new Date(),
-        })
-        .where(eq(webhookEvents.id, webhookId));
-    } else {
-      // Mark as failed and increment retry count
-      await db
-        .update(webhookEvents)
-        .set({
-          error: result.error,
-          retryCount: webhookRecord.retryCount + 1,
-        })
-        .where(eq(webhookEvents.id, webhookId));
-    }
-
-    console.log(
-      `Webhook job completed: ${eventId} (success: ${result.success})`,
-    );
-
-    return {
-      success: result.success,
+    // 4. Process webhook using the existing service
+    await processEvent(
+      mockFastify as unknown as Parameters<typeof processEvent>[0],
       eventId,
-      eventType,
-      handlerUsed: result.handlerUsed,
-    };
+    );
+
+    console.log(`Webhook job completed successfully: ${eventId}`);
+
+    return;
   } catch (error) {
     console.error(`Webhook job failed: ${eventId}`, error);
 

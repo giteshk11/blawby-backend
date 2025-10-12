@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import type { FastifyInstance } from 'fastify';
-import { getStripeCustomers } from '@/modules/billing/services/stripe-client.service';
+import { getStripeCustomers } from '@/shared/services/stripe-client.service';
 import {
   findByEmail,
   findByStripeId,
@@ -79,11 +79,11 @@ export const createOrGetCustomer = async (
       email: stripeCustomer.email || customerData.email,
       name: stripeCustomer.name || customerData.name,
       phone: stripeCustomer.phone || customerData.phone,
-      address: stripeCustomer.address as any,
+      address: stripeCustomer.address as unknown,
       defaultPaymentMethodId:
         (stripeCustomer.invoice_settings?.default_payment_method as string) ||
         null,
-      metadata: stripeCustomer.metadata as Record<string, any>,
+      metadata: stripeCustomer.metadata as Record<string, unknown>,
     };
 
     customer = await createCustomer(fastify.db, newCustomer);
@@ -160,11 +160,11 @@ export const updateCustomer = async (
     email: stripeCustomer.email || customerData.email,
     name: stripeCustomer.name || customerData.name,
     phone: stripeCustomer.phone || customerData.phone,
-    address: stripeCustomer.address as any,
+    address: stripeCustomer.address as unknown,
     defaultPaymentMethodId:
       (stripeCustomer.invoice_settings?.default_payment_method as string) ||
       null,
-    metadata: stripeCustomer.metadata as Record<string, any>,
+    metadata: stripeCustomer.metadata as Record<string, unknown>,
   };
 
   return await updateCustomerByStripeId(
@@ -195,10 +195,10 @@ export const handleCustomerCreated = async (
     email: customerData.email || '',
     name: customerData.name,
     phone: customerData.phone,
-    address: customerData.address as any,
+    address: customerData.address as unknown,
     defaultPaymentMethodId:
       (customerData.invoice_settings?.default_payment_method as string) || null,
-    metadata: customerData.metadata as Record<string, any>,
+    metadata: customerData.metadata as Record<string, unknown>,
   };
 
   await createCustomer(fastify.db, newCustomer);
@@ -222,10 +222,10 @@ export const handleCustomerUpdated = async (
     email: customerData.email || customer.email,
     name: customerData.name,
     phone: customerData.phone,
-    address: customerData.address as any,
+    address: customerData.address as unknown,
     defaultPaymentMethodId:
       (customerData.invoice_settings?.default_payment_method as string) || null,
-    metadata: customerData.metadata as Record<string, any>,
+    metadata: customerData.metadata as Record<string, unknown>,
   };
 
   await updateCustomerByStripeId(fastify.db, stripeCustomerId, updateData);

@@ -5,29 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760154017616,
-      "tag": "0000_cooing_microbe",
+      "when": 1760288590429,
+      "tag": "0000_modern_dragon_lord",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1760161522291,
-      "tag": "0001_damp_lila_cheney",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1760184590074,
-      "tag": "0002_dizzy_karen_page",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1760193452146,
-      "tag": "0003_natural_starfox",
+      "when": 1760290855675,
+      "tag": "0001_marvelous_exodus",
       "breakpoints": true
     }
   ]

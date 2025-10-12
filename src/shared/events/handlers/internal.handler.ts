@@ -27,20 +27,17 @@ export const registerInternalHandlers = (): void => {
   });
 
   // Alert on failed payments
-  subscribeToEvent(
-    EventType.BILLING_PAYMENT_FAILED,
-    async (event: BaseEvent) => {
-      await notifySlack({
-        channel: '#alerts',
-        text: `⚠️ Payment failed for organization ${event.organizationId}`,
-        fields: {
-          Amount: `$${(event.payload.amount / 100).toFixed(2)}`,
-          Error: event.payload.error || 'Unknown error',
-          Customer: event.payload.customerEmail || 'Unknown',
-        },
-      });
-    },
-  );
+  subscribeToEvent(EventType.PAYMENT_FAILED, async (event: BaseEvent) => {
+    await notifySlack({
+      channel: '#alerts',
+      text: `⚠️ Payment failed for organization ${event.organizationId}`,
+      fields: {
+        Amount: `$${(event.payload.amount / 100).toFixed(2)}`,
+        Error: event.payload.error || 'Unknown error',
+        Customer: event.payload.customerEmail || 'Unknown',
+      },
+    });
+  });
 
   // Notify on practice creation
   subscribeToEvent(EventType.PRACTICE_CREATED, async (event: BaseEvent) => {
@@ -55,21 +52,18 @@ export const registerInternalHandlers = (): void => {
     });
   });
 
-  // Alert on billing onboarding completion
-  subscribeToEvent(
-    EventType.BILLING_ONBOARDING_COMPLETED,
-    async (event: BaseEvent) => {
-      await notifySlack({
-        channel: '#billing',
-        text: `💳 Stripe onboarding completed for ${event.organizationId}`,
-        fields: {
-          'Account ID': event.payload.stripeAccountId || 'unknown',
-          'Charges Enabled': event.payload.chargesEnabled ? 'Yes' : 'No',
-          'Payouts Enabled': event.payload.payoutsEnabled ? 'Yes' : 'No',
-        },
-      });
-    },
-  );
+  // Alert on onboarding completion
+  subscribeToEvent(EventType.ONBOARDING_COMPLETED, async (event: BaseEvent) => {
+    await notifySlack({
+      channel: '#onboarding',
+      text: `✅ Stripe onboarding completed for ${event.organizationId}`,
+      fields: {
+        'Account ID': event.payload.stripeAccountId || 'unknown',
+        'Charges Enabled': event.payload.chargesEnabled ? 'Yes' : 'No',
+        'Payouts Enabled': event.payload.payoutsEnabled ? 'Yes' : 'No',
+      },
+    });
+  });
 
   // Alert on system errors
   subscribeToEvent(

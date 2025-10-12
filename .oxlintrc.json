@@ -12,7 +12,10 @@
     "perf": "error",
     "nursery": "off",
     "no-explicit-any": "error",
-    "explicit-function-return-type": "error"
+    "explicit-function-return-type": "error",
+    "no-unsafe-any": "error",
+    "no-function-statement": "error",
+    "no-relative-import-paths": "error"
   },
   "allow": [
     "no-console",

@@ -68,6 +68,13 @@ export const organizations = pgTable('organizations', {
   logo: text('logo'),
   createdAt: timestamp('created_at').notNull(),
   metadata: text('metadata'),
+
+  // Billing fields for platform subscription
+  stripeCustomerId: text('stripe_customer_id'), // Platform customer for billing
+  stripePaymentMethodId: text('stripe_payment_method_id'),
+  billingEmail: text('billing_email'),
+  activeSubscriptionId: text('active_subscription_id'),
+  paymentMethodSetupAt: timestamp('payment_method_setup_at'),
 });
 
 export const members = pgTable('members', {
