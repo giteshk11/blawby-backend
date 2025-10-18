@@ -5,7 +5,6 @@ import {
   json,
   timestamp,
   boolean,
-  integer,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -15,7 +14,7 @@ import { organizations } from '@/schema';
 export type CompanyInfo = {
   name?: string;
   tax_id?: string;
-  address?: Address;
+  address?: OnboardingAddress;
 };
 
 export type IndividualInfo = {
@@ -24,10 +23,10 @@ export type IndividualInfo = {
   email?: string;
   dob?: { day?: number; month?: number; year?: number };
   ssn_last_4?: string;
-  address?: Address;
+  address?: OnboardingAddress;
 };
 
-export type Address = {
+export type OnboardingAddress = {
   line1?: string;
   line2?: string;
   city?: string;
@@ -120,24 +119,6 @@ export const stripeAccountSessions = pgTable('stripe_account_sessions', {
   revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
 });
 
-// Webhook events table
-export const webhookEvents = pgTable('webhook_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  stripeEventId: text('stripe_event_id').notNull().unique(),
-  eventType: text('event_type').notNull(),
-  processed: boolean('processed').default(false).notNull(),
-  processedAt: timestamp('processed_at'),
-  error: text('error'),
-  errorStack: text('error_stack'),
-  retryCount: integer('retry_count').default(0).notNull(),
-  maxRetries: integer('max_retries').default(3).notNull(),
-  nextRetryAt: timestamp('next_retry_at'),
-  payload: json('payload').notNull(),
-  headers: json('headers').$type<Record<string, string>>(),
-  url: text('url'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
 // Zod schemas for validation
 export const createStripeConnectedAccountSchema = createInsertSchema(
   stripeConnectedAccounts,
@@ -161,12 +142,9 @@ export const updateStripeConnectedAccountSchema = createInsertSchema(
   },
 ).partial();
 
-export const createWebhookEventSchema = createInsertSchema(webhookEvents);
-
 export const selectStripeConnectedAccountSchema = createSelectSchema(
   stripeConnectedAccounts,
 );
-export const selectWebhookEventSchema = createSelectSchema(webhookEvents);
 
 // Request/Response schemas
 export const createAccountRequestSchema = z.object({
@@ -215,9 +193,6 @@ export type NewStripeConnectedAccount =
   typeof stripeConnectedAccounts.$inferInsert;
 export type StripeAccountSession = typeof stripeAccountSessions.$inferSelect;
 export type NewStripeAccountSession = typeof stripeAccountSessions.$inferInsert;
-export type WebhookEvent = typeof webhookEvents.$inferSelect;
-export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
-
 export type CreateAccountRequest = z.infer<typeof createAccountRequestSchema>;
 export type CreateAccountResponse = z.infer<typeof createAccountResponseSchema>;
 export type GetAccountResponse = z.infer<typeof getAccountResponseSchema>;

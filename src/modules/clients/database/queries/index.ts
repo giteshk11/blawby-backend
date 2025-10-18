@@ -1,1 +1,1 @@
-export * from './customers.repository';
+export * from './clients.repository';

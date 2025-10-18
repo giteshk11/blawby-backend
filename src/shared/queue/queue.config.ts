@@ -1,5 +1,6 @@
 export const QUEUE_NAMES = {
   STRIPE_WEBHOOKS: 'stripe-webhooks',
+  ONBOARDING_WEBHOOKS: 'onboarding-webhooks',
 } as const;
 
 export const JOB_NAMES = {
@@ -13,8 +14,7 @@ export const queueConfig = {
       type: 'exponential' as const,
       delay: 60000, // Start with 1 minute
     },
-    removeOnComplete: 100,  // Keep last 100 completed jobs
-    removeOnFail: 1000,     // Keep last 1000 failed jobs
+    removeOnComplete: 100, // Keep last 100 completed jobs
+    removeOnFail: 1000, // Keep last 1000 failed jobs
   },
 };
-

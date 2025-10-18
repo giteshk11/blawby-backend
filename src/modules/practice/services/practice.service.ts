@@ -5,33 +5,35 @@ import {
   updateOrganization,
   deleteOrganization,
   setActiveOrganization,
-} from './organization.service';
+} from '@/modules/practice/services/organization.service';
 import {
   createPracticeDetails,
   findPracticeDetailsByOrganization,
-  updatePracticeDetails,
+  upsertPracticeDetails,
   deletePracticeDetails,
-} from '../repositories/practice-details.repository';
-import {
-  InsertPracticeRequest,
-  UpdatePracticeRequest,
-} from '../schemas/practice.schema';
+} from '@/modules/practice/database/queries/practice-details.repository';
+import { organizations } from '@/schema/better-auth-schema';
+import { eq } from 'drizzle-orm';
+import type {
+  PracticeCreateRequest,
+  PracticeUpdateRequest,
+  PracticeWithDetails,
+  UpdateOrganizationRequest,
+  OrganizationListItem,
+} from '@/modules/practice/types/practice.types';
 import type { FastifyInstance } from 'fastify';
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishEvent } from '@/shared/events/dispatcher';
 import { sanitizeError } from '@/shared/utils/logging';
-
-type User = {
-  id: string;
-  email: string;
-};
+import { omit } from 'es-toolkit/compat';
+import type { User } from 'better-auth';
 
 // Practice service functions (practice = organization + optional practice details)
 export const listPractices = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<OrganizationListItem[]> => {
   // Forward to Better Auth org plugin
   return listOrganizations(user, fastify, requestHeaders);
 };
@@ -41,7 +43,7 @@ export const getPracticeById = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<PracticeWithDetails> => {
   // Get organization from Better Auth
   const organization = await getFullOrganization(
     organizationId,
@@ -58,18 +60,30 @@ export const getPracticeById = async (
   const practiceDetails =
     await findPracticeDetailsByOrganization(organizationId);
 
+  // Clean practice details (remove internal fields only)
+  const cleanPracticeDetails = practiceDetails
+    ? omit(practiceDetails, [
+        'id',
+        'organizationId',
+        'userId',
+        'createdAt',
+        'updatedAt',
+      ])
+    : null;
+
   return {
     ...organization,
-    practiceDetails,
+    ...cleanPracticeDetails,
+    practice_details: cleanPracticeDetails,
   };
 };
 
 export const createPracticeService = async (
-  data: InsertPracticeRequest,
+  data: PracticeCreateRequest,
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<PracticeWithDetails> => {
   try {
     fastify.log.info(
       {
@@ -81,8 +95,8 @@ export const createPracticeService = async (
           practiceData: {
             name: data.name,
             slug: data.slug,
-            hasBusinessPhone: !!data.businessPhone,
-            hasBusinessEmail: !!data.businessEmail,
+            hasBusinessPhone: !!data.business_phone,
+            hasBusinessEmail: !!data.business_email,
           },
         },
       },
@@ -91,11 +105,11 @@ export const createPracticeService = async (
 
     // Extract practice details (optional fields)
     const {
-      businessPhone,
-      businessEmail,
-      consultationFee,
-      paymentUrl,
-      calendlyUrl,
+      business_phone,
+      business_email,
+      consultation_fee,
+      payment_url,
+      calendly_url,
       ...organizationData
     } = data;
 
@@ -116,35 +130,34 @@ export const createPracticeService = async (
     // Create optional practice details if provided
     let practiceDetails = null;
     if (
-      businessPhone ||
-      businessEmail ||
-      consultationFee ||
-      paymentUrl ||
-      calendlyUrl
+      business_phone ||
+      business_email ||
+      consultation_fee ||
+      payment_url ||
+      calendly_url
     ) {
       practiceDetails = await createPracticeDetails({
-        organizationId: organization.id,
-        businessPhone,
-        businessEmail,
-        consultationFee,
-        paymentUrl,
-        calendlyUrl,
-        userId: user.id,
+        organization_id: organization.id,
+        user_id: user.id,
+        business_phone,
+        business_email,
+        consultation_fee,
+        payment_url,
+        calendly_url,
       });
 
       // Publish practice details created event
       await publishEvent({
-        fastify,
         eventType: EventType.PRACTICE_DETAILS_CREATED,
         actorId: user.id,
         organizationId: organization.id,
         data: {
           practiceDetailsId: practiceDetails.id,
-          businessPhone,
-          businessEmail,
-          consultationFee,
-          paymentUrl,
-          calendlyUrl,
+          businessPhone: business_phone,
+          businessEmail: business_email,
+          consultationFee: consultation_fee,
+          paymentUrl: payment_url,
+          calendlyUrl: calendly_url,
         },
         headers: requestHeaders,
       });
@@ -152,7 +165,6 @@ export const createPracticeService = async (
 
     // Publish practice created event (organization + optional details)
     await publishEvent({
-      fastify,
       eventType: EventType.PRACTICE_CREATED,
       actorId: user.id,
       organizationId: organization.id,
@@ -166,9 +178,21 @@ export const createPracticeService = async (
       headers: requestHeaders,
     });
 
+    // Clean practice details (remove internal fields only)
+    const cleanPracticeDetails = practiceDetails
+      ? omit(practiceDetails, [
+          'id',
+          'organizationId',
+          'userId',
+          'createdAt',
+          'updatedAt',
+        ])
+      : null;
+
     return {
       ...organization,
-      practiceDetails,
+      ...cleanPracticeDetails,
+      practice_details: cleanPracticeDetails,
     };
   } catch (error) {
     // Add business context for debugging
@@ -195,62 +219,83 @@ export const createPracticeService = async (
 
 export const updatePracticeService = async (
   organizationId: string,
-  data: UpdatePracticeRequest,
+  data: PracticeUpdateRequest,
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<PracticeWithDetails | null> => {
   // Extract practice details (optional fields)
   const {
-    businessPhone,
-    businessEmail,
-    consultationFee,
-    paymentUrl,
-    calendlyUrl,
+    business_phone,
+    business_email,
+    consultation_fee,
+    payment_url,
+    calendly_url,
     ...organizationData
   } = data;
 
-  // Update organization in Better Auth
-  const organization = await updateOrganization(
-    organizationId,
-    organizationData,
-    user,
-    fastify,
-    requestHeaders,
-  );
+  // Update organization in Better Auth only if there are organization fields to update
+  let organization = null;
+  if (Object.keys(organizationData).length > 0) {
+    organization = await updateOrganization(
+      organizationId,
+      organizationData as UpdateOrganizationRequest,
+      user,
+      fastify,
+      requestHeaders,
+    );
+
+    if (!organization) {
+      return null;
+    }
+  } else {
+    // If no organization data to update, fetch the current organization
+    const orgResults = await fastify.db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+
+    organization = orgResults[0] || null;
+    if (!organization) {
+      return null;
+    }
+  }
 
   // Update optional practice details if provided
   let practiceDetails = null;
   if (
-    businessPhone ||
-    businessEmail ||
-    consultationFee ||
-    paymentUrl ||
-    calendlyUrl
+    business_phone ||
+    business_email ||
+    consultation_fee ||
+    payment_url ||
+    calendly_url
   ) {
-    const data = {
-      businessPhone,
-      businessEmail,
-      consultationFee,
-      paymentUrl,
-      calendlyUrl,
+    const practiceData = {
+      business_phone,
+      business_email,
+      consultation_fee,
+      payment_url,
+      calendly_url,
     };
-    practiceDetails = await updatePracticeDetails(organizationId, data);
+    practiceDetails = await upsertPracticeDetails(
+      organizationId,
+      user.id,
+      practiceData,
+    );
 
     // Publish practice details updated event
     await publishEvent({
-      fastify,
       eventType: EventType.PRACTICE_DETAILS_UPDATED,
       actorId: user.id,
       organizationId,
-      data,
+      data: practiceData,
       headers: requestHeaders,
     });
   }
 
   // Publish practice updated event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_UPDATED,
     actorId: user.id,
     organizationId,
@@ -264,9 +309,21 @@ export const updatePracticeService = async (
     headers: requestHeaders,
   });
 
+  // Clean practice details (remove internal fields only)
+  const cleanPracticeDetails = practiceDetails
+    ? omit(practiceDetails, [
+        'id',
+        'organization_id',
+        'user_id',
+        'created_at',
+        'updated_at',
+      ])
+    : null;
+
   return {
     ...organization,
-    practiceDetails,
+    ...cleanPracticeDetails,
+    practice_details: cleanPracticeDetails,
   };
 };
 
@@ -275,44 +332,37 @@ export const deletePracticeService = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<{ success: boolean }> => {
   // Get practice details before deletion for event payload
   const existingPracticeDetails =
     await findPracticeDetailsByOrganization(organizationId);
 
   // Delete optional practice details first
-  await deletePracticeDetails(organizationId);
+  await deletePracticeDetails(fastify.db, organizationId);
 
   // Publish practice details deleted event if they existed
   if (existingPracticeDetails) {
     await publishEvent({
-      fastify,
       eventType: EventType.PRACTICE_DETAILS_DELETED,
       actorId: user.id,
       organizationId,
       data: {
         practiceDetailsId: existingPracticeDetails.id,
-        businessPhone: existingPracticeDetails.businessPhone,
-        businessEmail: existingPracticeDetails.businessEmail,
-        consultationFee: existingPracticeDetails.consultationFee,
-        paymentUrl: existingPracticeDetails.paymentUrl,
-        calendlyUrl: existingPracticeDetails.calendlyUrl,
+        business_phone: existingPracticeDetails.business_phone,
+        business_email: existingPracticeDetails.business_email,
+        consultation_fee: existingPracticeDetails.consultation_fee,
+        payment_url: existingPracticeDetails.payment_url,
+        calendly_url: existingPracticeDetails.calendly_url,
       },
       headers: requestHeaders,
     });
   }
 
   // Delete organization in Better Auth
-  const result = await deleteOrganization(
-    organizationId,
-    user,
-    fastify,
-    requestHeaders,
-  );
+  await deleteOrganization(organizationId, user, fastify, requestHeaders);
 
   // Publish practice deleted event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_DELETED,
     actorId: user.id,
     organizationId,
@@ -324,7 +374,7 @@ export const deletePracticeService = async (
     headers: requestHeaders,
   });
 
-  return result;
+  return { success: true };
 };
 
 export const setActivePractice = async (
@@ -332,7 +382,8 @@ export const setActivePractice = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<{ success: boolean }> => {
   // Forward to Better Auth org plugin
-  return setActiveOrganization(organizationId, user, fastify, requestHeaders);
+  await setActiveOrganization(organizationId, user, fastify, requestHeaders);
+  return { success: true };
 };

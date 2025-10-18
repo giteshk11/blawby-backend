@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import {
   events,
   eventTimelineQuerySchema,

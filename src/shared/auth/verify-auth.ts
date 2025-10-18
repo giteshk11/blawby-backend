@@ -7,19 +7,7 @@ import {
   organizations as organizationTable,
   members as memberTable,
 } from '@/schema';
-
-// Extend Fastify types
-declare module 'fastify' {
-  interface FastifyInstance {
-    verifyAuth(request: FastifyRequest, reply: FastifyReply): Promise<void>;
-  }
-  interface FastifyRequest {
-    user?: Record<string, unknown>;
-    session?: Record<string, unknown>;
-    userId?: string;
-    activeOrganizationId?: string;
-  }
-}
+import { ExtendedSession } from '@/shared/types/auth';
 
 /**
  * Auth Core Plugin
@@ -40,9 +28,9 @@ export default fp(async function authCore(fastify: FastifyInstance) {
         fastify.log.info(`Auth header: ${authHeader.substring(0, 20)}...`);
 
         // Use Better Auth's session API to verify
-        const session = await fastify.betterAuth.api.getSession({
-          headers: request.headers as Record<string, string>,
-        });
+        const session = (await fastify.betterAuth.api.getSession({
+          headers: request.headers,
+        })) as ExtendedSession;
 
         fastify.log.info(
           `Session result: ${session ? JSON.stringify({ userId: session.user?.id, sessionId: session.session?.id, hasOrg: !!session.session?.activeOrganizationId }) : 'null'}`,
@@ -94,8 +82,16 @@ export default fp(async function authCore(fastify: FastifyInstance) {
         }
 
         // Attach user and session to request
-        request.user = session.user;
-        request.session = session.session;
+        request.user = {
+          ...session.user,
+          image: session.user.image ?? null,
+        };
+        request.session = {
+          ...session.session,
+          activeOrganizationId: session.session.activeOrganizationId ?? null,
+          ipAddress: session.session.ipAddress ?? null,
+          userAgent: session.session.userAgent ?? null,
+        };
         request.userId = session.user.id;
         request.activeOrganizationId = activeOrganizationId;
       } catch (error) {

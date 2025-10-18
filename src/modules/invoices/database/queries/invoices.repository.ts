@@ -1,5 +1,5 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import {
   invoices,
   invoiceLineItems,

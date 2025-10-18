@@ -14,10 +14,11 @@ import { sanitizeError } from '@/shared/utils/logging';
  * Create Better Auth instance with database connection
  * This is called once during plugin initialization
  */
-function createAuthInstance(
-  db: NodePgDatabase,
+const betterAuthInstance = (
+  db: NodePgDatabase<typeof schema>,
   fastify?: FastifyInstance,
-): ReturnType<typeof betterAuth> {
+  // oxlint-disable-next-line explicit-function-return-type
+) => {
   return betterAuth({
     secret: process.env.BETTER_AUTH_SECRET,
 
@@ -255,7 +256,7 @@ function createAuthInstance(
       'http://127.0.0.1:3000',
     ],
   });
-}
+};
 
 /**
  * Better Auth Fastify Plugin
@@ -272,10 +273,10 @@ const betterAuthPlugin = fp(async function betterAuthPlugin(
   }
 
   // Create auth instance with database and fastify instance for events
-  const auth = createAuthInstance(fastify.db, fastify);
+  const betterAuth = betterAuthInstance(fastify.db, fastify);
 
   // Decorate Fastify instance with auth
-  fastify.decorate('betterAuth', auth);
+  fastify.decorate('betterAuth', betterAuth);
 
   // Register Better Auth routes in an encapsulated context
   await fastify.register(
@@ -314,7 +315,7 @@ const betterAuthPlugin = fp(async function betterAuthPlugin(
             );
 
             // Let Better Auth handle the request
-            const response = await auth.handler(webRequest);
+            const response = await betterAuth.handler(webRequest);
 
             // Forward response
             reply.status(response.status);
@@ -342,11 +343,6 @@ const betterAuthPlugin = fp(async function betterAuthPlugin(
   );
 });
 
-// Type declarations
-declare module 'fastify' {
-  interface FastifyInstance {
-    betterAuth: ReturnType<typeof createAuthInstance>;
-  }
-}
+export type BetterAuthInstance = ReturnType<typeof betterAuthInstance>;
 
 export default betterAuthPlugin;

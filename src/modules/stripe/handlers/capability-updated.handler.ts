@@ -1,5 +1,5 @@
 import type Stripe from 'stripe';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { stripeConnectedAccounts } from '@/modules/onboarding/schemas/onboarding.schema';
 import { eq } from 'drizzle-orm';
 

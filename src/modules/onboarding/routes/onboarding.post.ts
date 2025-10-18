@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { createOnboardingSessionBilling } from '@/modules/onboarding/services/connected-accounts.service';
-import { validateBody } from '@/shared/utils/validation';
+import { createOnboardingSession } from '@/modules/onboarding/services/connected-accounts.service';
+import { validateBody } from '@/shared/lib/validate';
 import { createOnboardingSessionSchema } from '@/shared/validations/billing';
 
 type CreateOnboardingSessionRequest = {
@@ -21,10 +21,10 @@ export default async function createOnboardingSessionRoute(
     createOnboardingSessionSchema,
   );
 
-  const session = await createOnboardingSessionBilling(
-    validatedData,
-    request.user,
+  const session = await createOnboardingSession(
     request.server,
+    validatedData.organizationEmail || request.user.organizationEmail || '',
+    request.user.organizationId,
   );
 
   return reply.send({ data: session });

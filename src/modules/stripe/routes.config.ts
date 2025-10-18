@@ -1,6 +1,15 @@
 import type { RouteConfig } from '@/shared/types/route-config';
 
-export const routeConfig: RouteConfig = {
+export const routeConfig = {
   // Webhooks are public (they verify via signature)
-  public: ['POST /webhooks'],
-};
+  public: [
+    {
+      method: 'POST',
+      endpoint: '/webhooks',
+    },
+    {
+      method: 'POST',
+      endpoint: '/connect/webhook-events',
+    },
+  ],
+} satisfies RouteConfig;

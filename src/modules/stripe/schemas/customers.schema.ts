@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { organizations, users } from '@/schema';
 
 // Address type for customers
-export type Address = {
+export type StripeAddress = {
   line1?: string;
   line2?: string;
   city?: string;
@@ -52,7 +52,7 @@ export const createCustomerSchema = createInsertSchema(customers, {
 
 export const updateCustomerSchema = createCustomerSchema.partial();
 
-export const selectCustomerSchema = createSelectSchema(customers);
+export const selectStripeCustomerSchema = createSelectSchema(customers);
 
 // Request/Response schemas
 export const createCustomerRequestSchema = z.object({

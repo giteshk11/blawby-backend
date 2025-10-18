@@ -1,18 +1,18 @@
 import { eq, and, lte, gt } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   stripeConnectedAccounts,
   stripeAccountSessions,
-  webhookEvents,
   type StripeConnectedAccount,
   type NewStripeConnectedAccount,
   type StripeAccountSession,
-  type WebhookEvent,
-  type NewWebhookEvent,
 } from '@/modules/onboarding/schemas/onboarding.schema';
+import {
+  webhookEvents,
+  type WebhookEvent,
+} from '@/shared/schemas/stripe.webhook-events.schema';
+import { db } from '@/shared/database';
 
 export const findByOrganization = async (
-  db: NodePgDatabase,
   organizationId: string,
 ): Promise<StripeConnectedAccount | null> => {
   const accounts = await db
@@ -25,7 +25,6 @@ export const findByOrganization = async (
 };
 
 export const findByStripeId = async (
-  db: NodePgDatabase,
   stripeAccountId: string,
 ): Promise<StripeConnectedAccount | null> => {
   const accounts = await db
@@ -38,7 +37,6 @@ export const findByStripeId = async (
 };
 
 export const findById = async (
-  db: NodePgDatabase,
   id: string,
 ): Promise<StripeConnectedAccount | null> => {
   const accounts = await db
@@ -51,7 +49,6 @@ export const findById = async (
 };
 
 export const createStripeConnectedAccount = async (
-  db: NodePgDatabase,
   data: NewStripeConnectedAccount,
 ): Promise<StripeConnectedAccount> => {
   const [account] = await db
@@ -66,7 +63,6 @@ export const createStripeConnectedAccount = async (
 };
 
 export const updateStripeConnectedAccount = async (
-  db: NodePgDatabase,
   id: string,
   data: Partial<NewStripeConnectedAccount>,
 ): Promise<StripeConnectedAccount> => {
@@ -83,7 +79,6 @@ export const updateStripeConnectedAccount = async (
 };
 
 export const updateStripeConnectedAccountByStripeId = async (
-  db: NodePgDatabase,
   stripeAccountId: string,
   data: Partial<NewStripeConnectedAccount>,
 ): Promise<StripeConnectedAccount> => {
@@ -100,7 +95,6 @@ export const updateStripeConnectedAccountByStripeId = async (
 };
 
 export const updateLastRefreshed = async (
-  db: NodePgDatabase,
   stripeAccountId: string,
 ): Promise<void> => {
   await db
@@ -112,74 +106,7 @@ export const updateLastRefreshed = async (
     .where(eq(stripeConnectedAccounts.stripeAccountId, stripeAccountId));
 };
 
-export const findByStripeEventId = async (
-  db: NodePgDatabase,
-  eventId: string,
-): Promise<WebhookEvent | null> => {
-  const events = await db
-    .select()
-    .from(webhookEvents)
-    .where(eq(webhookEvents.stripeEventId, eventId))
-    .limit(1);
-
-  return events[0] || null;
-};
-
-export const createWebhookEvent = async (
-  db: NodePgDatabase,
-  data: NewWebhookEvent,
-): Promise<WebhookEvent> => {
-  const [event] = await db.insert(webhookEvents).values(data).returning();
-
-  return event;
-};
-
-export const markWebhookProcessed = async (
-  db: NodePgDatabase,
-  id: string,
-): Promise<void> => {
-  await db
-    .update(webhookEvents)
-    .set({
-      processed: true,
-      processedAt: new Date(),
-    })
-    .where(eq(webhookEvents.id, id));
-};
-
-export const markWebhookFailed = async (
-  db: NodePgDatabase,
-  id: string,
-  error: string,
-  errorStack?: string,
-): Promise<void> => {
-  const event = await findWebhookById(db, id);
-  if (!event) return;
-
-  const retryCount = event.retryCount + 1;
-  const maxRetries = event.maxRetries;
-
-  // Calculate next retry time with exponential backoff
-  let nextRetryAt: Date | null = null;
-  if (retryCount <= maxRetries) {
-    const backoffMinutes = Math.pow(5, retryCount); // 1min, 5min, 15min
-    nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
-  }
-
-  await db
-    .update(webhookEvents)
-    .set({
-      retryCount,
-      error,
-      errorStack,
-      nextRetryAt,
-    })
-    .where(eq(webhookEvents.id, id));
-};
-
-export const getEventsToRetry = async (
-  db: NodePgDatabase,
-): Promise<WebhookEvent[]> => {
+export const getEventsToRetry = async (): Promise<WebhookEvent[]> => {
   const now = new Date();
   return await db
     .select()
@@ -192,10 +119,7 @@ export const getEventsToRetry = async (
     );
 };
 
-const findWebhookById = async (
-  db: NodePgDatabase,
-  id: string,
-): Promise<WebhookEvent | null> => {
+const findWebhookById = async (id: string): Promise<WebhookEvent | null> => {
   const events = await db
     .select()
     .from(webhookEvents)
@@ -212,7 +136,6 @@ const findWebhookById = async (
  * Returns only sessions that are active and not expired
  */
 export const getActiveSession = async (
-  db: NodePgDatabase,
   stripeAccountId: string,
   sessionType: 'onboarding' | 'payments' | 'payouts' = 'onboarding',
 ): Promise<StripeAccountSession | null> => {
@@ -258,15 +181,12 @@ export const getActiveSession = async (
 /**
  * Create new session in database
  */
-export const createSession = async (
-  db: NodePgDatabase,
-  data: {
-    stripeAccountId: string;
-    sessionType: string;
-    clientSecret: string;
-    expiresAt: Date;
-  },
-): Promise<StripeAccountSession> => {
+export const createSession = async (data: {
+  stripeAccountId: string;
+  sessionType: string;
+  clientSecret: string;
+  expiresAt: Date;
+}): Promise<StripeAccountSession> => {
   const sessions = await db
     .insert(stripeAccountSessions)
     .values({
@@ -283,7 +203,6 @@ export const createSession = async (
  * Marks all active sessions of the same type as inactive
  */
 export const revokeOldSessions = async (
-  db: NodePgDatabase,
   stripeAccountId: string,
   sessionType: string,
 ): Promise<void> => {

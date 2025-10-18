@@ -5,8 +5,8 @@
  * Pass parameters and it figures out the correct event type and publisher
  */
 
-import type { FastifyInstance } from 'fastify';
 import { EventType } from '@/shared/events/enums/event-types';
+import type { BaseEvent } from '@/shared/events/schemas/events.schema';
 import {
   publishPracticeEvent,
   publishUserEvent,
@@ -14,7 +14,6 @@ import {
 } from '@/shared/events/event-publisher';
 
 type EventParams = {
-  fastify: FastifyInstance;
   eventType: EventType;
   actorId: string; // Who did it (always required)
   organizationId?: string; // Where it happened (optional)
@@ -23,7 +22,6 @@ type EventParams = {
 };
 
 export const publishEvent = async ({
-  fastify,
   eventType,
   actorId,
   organizationId,
@@ -33,7 +31,6 @@ export const publishEvent = async ({
   // Determine which publisher to use based on event type
   if (eventType.startsWith('PRACTICE_') || eventType.startsWith('BILLING_')) {
     return publishPracticeEvent(
-      fastify,
       eventType,
       actorId,
       organizationId || '',
@@ -43,16 +40,9 @@ export const publishEvent = async ({
   }
 
   if (eventType.startsWith('USER_') || eventType.startsWith('AUTH_')) {
-    return publishUserEvent(fastify, eventType, actorId, data, headers);
+    return publishUserEvent(eventType, actorId, data, headers);
   }
 
   // System events and others
-  return publishSystemEvent(
-    fastify,
-    eventType,
-    data,
-    actorId,
-    'system',
-    organizationId,
-  );
+  return publishSystemEvent(eventType, data, actorId, 'system', organizationId);
 };

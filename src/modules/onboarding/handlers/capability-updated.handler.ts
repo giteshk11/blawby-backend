@@ -1,85 +1,25 @@
 import type Stripe from 'stripe';
-import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { stripeConnectedAccounts } from '@/modules/onboarding/schemas/onboarding.schema';
+import { publishSystemEvent } from '@/shared/events/event-publisher';
+import { EventType } from '@/shared/events/enums/event-types';
 
 /**
- * Capability Updated Handler
+ * Handle capability.updated webhook event
  *
- * Handles Stripe capability.updated webhook events.
- * Updates the connected account capabilities in the database.
+ * Updates the connected account capabilities in the database
+ * and publishes an ONBOARDING_ACCOUNT_CAPABILITIES_UPDATED event.
+ * This is a pure function that doesn't depend on FastifyInstance.
  */
-export class CapabilityUpdatedHandler {
-  constructor(private fastify: FastifyInstance) {}
-
-  /**
-   * Handle capability.updated webhook event
-   */
-  async handle(event: Stripe.Event): Promise<void> {
-    const capability = event.data.object as Stripe.Capability;
-
-    this.fastify.log.info(
-      {
-        context: {
-          component: 'CapabilityUpdatedHandler',
-          operation: 'handle',
-          accountId: capability.account,
-          capabilityId: capability.id,
-          eventId: event.id,
-        },
-      },
-      'Processing capability.updated event',
+export const handleCapabilityUpdated = async (
+  capability: Stripe.Capability,
+): Promise<void> => {
+  try {
+    console.log(
+      `Processing capability.updated: ${capability.id} for account: ${capability.account}`,
     );
 
-    try {
-      // Update account capabilities
-      await this.updateAccountCapabilities(capability);
-
-      this.fastify.log.info(
-        {
-          context: {
-            component: 'CapabilityUpdatedHandler',
-            operation: 'handle',
-            accountId: capability.account,
-            capabilityId: capability.id,
-            eventId: event.id,
-          },
-        },
-        'Capability updated successfully',
-      );
-    } catch (error) {
-      this.fastify.log.error(
-        {
-          error:
-            error instanceof Error
-              ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
-              : error,
-          context: {
-            component: 'CapabilityUpdatedHandler',
-            operation: 'handle',
-            accountId: capability.account,
-            capabilityId: capability.id,
-            eventId: event.id,
-          },
-        },
-        'Failed to update capability',
-      );
-
-      throw error;
-    }
-  }
-
-  /**
-   * Update account capabilities in database
-   */
-  private async updateAccountCapabilities(
-    capability: Stripe.Capability,
-  ): Promise<void> {
     // Get current account record
     const account = await db
       .select()
@@ -93,23 +33,17 @@ export class CapabilityUpdatedHandler {
       .limit(1);
 
     if (account.length === 0) {
-      this.fastify.log.warn(
-        {
-          context: {
-            component: 'CapabilityUpdatedHandler',
-            operation: 'updateAccountCapabilities',
-            accountId: capability.account,
-            capabilityId: capability.id,
-          },
-        },
-        'Account not found for capability update',
+      console.warn(
+        `Account not found for capability update: ${capability.account}`,
       );
       return;
     }
 
+    const currentAccount = account[0];
+
     // Update capabilities JSONB field
     const currentCapabilities =
-      (account[0].capabilities as Record<string, unknown>) || {};
+      (currentAccount.capabilities as Record<string, unknown>) || {};
     const updatedCapabilities = {
       ...currentCapabilities,
       [capability.id]: {
@@ -120,6 +54,7 @@ export class CapabilityUpdatedHandler {
       },
     };
 
+    // Update the account capabilities in the database
     await db
       .update(stripeConnectedAccounts)
       .set({
@@ -133,32 +68,28 @@ export class CapabilityUpdatedHandler {
         ),
       );
 
-    this.fastify.log.debug(
+    // Publish capability updated event
+    await publishSystemEvent(
+      EventType.ONBOARDING_ACCOUNT_CAPABILITIES_UPDATED,
       {
-        context: {
-          component: 'CapabilityUpdatedHandler',
-          operation: 'updateAccountCapabilities',
-          accountId: capability.account,
-          capabilityId: capability.id,
-          status: capability.status,
-          requirements: capability.requirements,
-        },
+        stripeAccountId: capability.account,
+        organizationId: currentAccount.organizationId,
+        capabilityId: capability.id,
+        capabilityStatus: capability.status,
+        capabilityRequirements: capability.requirements,
+        requested: capability.requested,
+        requestedAt: capability.requested_at,
+        previousCapabilities: currentCapabilities,
+        updatedAt: new Date().toISOString(),
       },
-      'Account capabilities updated in database',
+      'stripe-webhook',
+      'webhook',
+      currentAccount.organizationId,
     );
-  }
-}
 
-// Function wrapper for webhook processor
-export const handleCapabilityUpdated = async function handleCapabilityUpdated(
-  fastify: FastifyInstance,
-  event: { eventId: string; eventType: string; payload: Stripe.Capability },
-): Promise<void> {
-  const handler = new CapabilityUpdatedHandler(fastify);
-  const stripeEvent = {
-    id: event.eventId,
-    type: event.eventType,
-    data: { object: event.payload },
-  } as Stripe.Event;
-  await handler.handle(stripeEvent);
+    console.log(`Capability updated and event published for: ${capability.id}`);
+  } catch (error) {
+    console.error(`Failed to update capability: ${capability.id}`, error);
+    throw error;
+  }
 };

@@ -1,14 +1,19 @@
 import type { RouteConfig } from '@/shared/types/route-config';
 
 export const routeConfig: RouteConfig = {
-  protected: true, // All payment routes require authentication
+  protected: true, // Default: payment routes require authentication
   public: [
-    // No public routes for payments
+    // Public payment page routes (no auth required)
+    '/pay/:slug',
+    '/pay/:slug/status',
   ],
   private: [
-    // No private routes - all are protected by default
+    // CAPTCHA-protected payment APIs (no auth required)
+    '/api/payment-links',
+    '/api/payment-links/:ulid',
   ],
   roles: {
-    // No specific role requirements - organization members can access
+    // Organization payment settings (admin only)
+    '/api/organizations/payment-link-settings': ['admin'],
   },
 };

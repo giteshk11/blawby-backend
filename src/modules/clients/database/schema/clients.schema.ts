@@ -1,9 +1,13 @@
 import { pgTable, uuid, text, jsonb, timestamp } from 'drizzle-orm/pg-core';
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import {
+  createInsertSchema,
+  createSelectSchema,
+  jsonSchema,
+} from 'drizzle-zod';
 import { z } from 'zod';
 import { organizations, users } from '@/schema/better-auth-schema';
 
-export type Address = {
+export type ClientAddress = {
   line1?: string;
   line2?: string;
   city?: string;
@@ -33,13 +37,13 @@ export const clients = pgTable('clients', {
   phone: text('phone'),
 
   // Address
-  address: jsonb('address').$type<Address>(),
+  address: jsonb('address').$type<ClientAddress>(),
 
   // Payment Methods
   defaultPaymentMethodId: text('default_payment_method_id'),
 
   // Metadata
-  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  metadata: jsonb('metadata').$type<typeof jsonSchema>(),
 
   // Audit
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -48,7 +52,7 @@ export const clients = pgTable('clients', {
 
 // Zod schemas for validation
 export const insertClientSchema = createInsertSchema(clients, {
-  email: z.string().email(),
+  email: z.email(),
 }).omit({
   id: true,
   createdAt: true,
@@ -63,7 +67,7 @@ export type InsertClient = z.infer<typeof insertClientSchema>;
 export type SelectClient = z.infer<typeof selectClientSchema>;
 
 // Legacy exports for backward compatibility during migration
-export const customers = clients;
+export const clientsAsCustomers = clients;
 export const insertCustomerSchema = insertClientSchema;
 export const selectCustomerSchema = selectClientSchema;
 export type InsertCustomer = InsertClient;

@@ -1,5 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { clientsRepository } from '@/modules/clients/database/queries/clients.repository';
+import { getStripeClient } from '@/shared/services/stripe-client.service';
 
 // Request validation schema
 const createClientSchema = z.object({
@@ -42,7 +44,7 @@ export default async function createClientRoute(
     }
 
     // Check if customer already exists with this email
-    const existingCustomer = await customersRepository.findByEmail(
+    const existingCustomer = await clientsRepository.findByEmail(
       validatedData.email,
     );
     if (existingCustomer) {
@@ -50,7 +52,8 @@ export default async function createClientRoute(
     }
 
     // Create customer on Stripe
-    const stripeCustomer = await request.server.stripe.customers.create({
+    const stripe = getStripeClient();
+    const stripeCustomer = await stripe.customers.create({
       email: validatedData.email,
       name: validatedData.name,
       phone: validatedData.phone,
@@ -62,7 +65,7 @@ export default async function createClientRoute(
     });
 
     // Store customer in database
-    const customer = await customersRepository.create({
+    const customer = await clientsRepository.create({
       userId: request.userId,
       organizationId,
       stripeCustomerId: stripeCustomer.id,
@@ -94,11 +97,7 @@ export default async function createClientRoute(
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return reply.badRequest({
-        success: false,
-        error: 'Validation failed',
-        details: error.errors,
-      });
+      return reply.badRequest('Validation failed');
     }
 
     request.server.logError(error, request);

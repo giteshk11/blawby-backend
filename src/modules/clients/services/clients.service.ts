@@ -5,8 +5,13 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { clientsRepository } from '../database/queries/clients.repository';
-import type { SelectClient } from '../database/schema/clients.schema';
+import { clientsRepository } from '@/modules/clients/database/queries/clients.repository';
+import { getStripeClient } from '@/shared/services/stripe-client.service';
+import type {
+  SelectClient,
+  InsertClient,
+} from '@/modules/clients/database/schema/clients.schema';
+import type Stripe from 'stripe';
 
 export interface CreateClientRequest {
   organizationId: string;
@@ -87,7 +92,8 @@ export const createClientsService = function createClientsService(
         }
 
         // 2. Create Stripe customer
-        const stripeCustomer = await fastify.stripe.customers.create({
+        const stripe = getStripeClient();
+        const stripeCustomer = await stripe.customers.create({
           email: request.email,
           name: request.name,
           phone: request.phone,
@@ -107,7 +113,7 @@ export const createClientsService = function createClientsService(
           name: request.name,
           phone: request.phone,
           address: request.address,
-          metadata: request.metadata,
+          metadata: JSON.stringify(request.metadata),
         };
 
         const client = await clientsRepository.create(clientData);
@@ -190,7 +196,10 @@ export const createClientsService = function createClientsService(
     ): Promise<UpdateClientResponse> {
       try {
         // 1. Verify client exists and belongs to organization
-        const client = await this.getClient(clientId, organizationId);
+        const client = (await this.getClient(
+          clientId,
+          organizationId,
+        )) as SelectClient | null;
 
         if (!client) {
           return {
@@ -200,14 +209,12 @@ export const createClientsService = function createClientsService(
         }
 
         // 2. Update Stripe customer
-        await fastify.stripe.customers.update(client.stripeCustomerId, {
+        const stripe = getStripeClient();
+        await stripe.customers.update(client.stripeCustomerId, {
           name: request.name,
           phone: request.phone,
           address: request.address,
-          metadata: {
-            ...client.metadata,
-            ...request.metadata,
-          },
+          metadata: client.metadata as Stripe.Emptyable<Stripe.MetadataParam>,
         });
 
         // 3. Update local client record
@@ -216,8 +223,9 @@ export const createClientsService = function createClientsService(
           phone: request.phone,
           address: request.address,
           metadata: {
-            ...client.metadata,
-            ...request.metadata,
+            ...(typeof client.metadata === 'object'
+              ? client.metadata || {}
+              : {}),
           },
         });
 
@@ -245,7 +253,7 @@ export const createClientsService = function createClientsService(
 
         return {
           success: true,
-          client: updatedClient,
+          client: updatedClient ?? undefined,
         };
       } catch (error) {
         fastify.log.error(
@@ -273,7 +281,10 @@ export const createClientsService = function createClientsService(
     ): Promise<unknown> {
       try {
         // 1. Verify client exists and belongs to organization
-        const client = await this.getClient(clientId, organizationId);
+        const client = (await this.getClient(
+          clientId,
+          organizationId,
+        )) as SelectClient | null;
 
         if (!client) {
           return {

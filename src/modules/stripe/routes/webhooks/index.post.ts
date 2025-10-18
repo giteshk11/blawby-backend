@@ -3,9 +3,12 @@ import Stripe from 'stripe';
 import { getStripeClient } from '@/shared/services/stripe-client.service';
 import {
   existsByStripeEventId,
-  createStripeWebhookEvent,
-} from '@/modules/stripe/repositories/stripe-webhook-events.repository';
-import { webhookResponseSchema } from '@/modules/stripe/schemas/webhook-events.schema';
+  createWebhookEvent,
+} from '@/shared/repositories/stripe.webhook-events.repository';
+import {
+  webhookResponseSchema,
+  type WebhookEvent,
+} from '@/shared/schemas/stripe.webhook-events.schema';
 
 // Define a custom request type with rawBody
 interface WebhookRequest extends FastifyRequest {
@@ -15,8 +18,8 @@ interface WebhookRequest extends FastifyRequest {
 export default async function webhookRoute(
   request: WebhookRequest,
   reply: FastifyReply,
-) {
-  const signature = request.headers['stripe-signature'];
+): Promise<FastifyReply> {
+  const signature = request.headers['stripe-signature'] as string;
   const rawBody = request.rawBody; // Provided by our raw-body plugin
 
   if (!signature || !rawBody) {
@@ -37,11 +40,13 @@ export default async function webhookRoute(
           component: 'WebhookRoute',
           operation: 'verifySignature',
           signatureLength: signature?.length,
+          signaturePrefix: signature?.substring(0, 20),
           rawBodyType: typeof rawBody,
           rawBodyLength: rawBody?.length,
           rawBodyIsBuffer: rawBody instanceof Buffer,
           webhookSecretExists: !!webhookSecret,
           webhookSecretPrefix: webhookSecret?.substring(0, 10),
+          webhookSecretLength: webhookSecret?.length,
         },
       },
       'Attempting webhook signature verification',
@@ -54,26 +59,34 @@ export default async function webhookRoute(
     );
 
     // Check idempotency
-    const alreadyExists = await existsByStripeEventId(
-      request.server.db,
-      event.id,
-    );
+    const existingEvent = await existsByStripeEventId(event.id);
 
-    if (alreadyExists) {
-      const response = webhookResponseSchema.parse({
-        received: true,
-        duplicate: true,
-      });
-      return reply.send(response);
+    let webhookEvent: WebhookEvent;
+
+    if (existingEvent) {
+      // Event already exists
+      if (existingEvent.processed) {
+        // Already processed - return duplicate response
+        const response = webhookResponseSchema.parse({
+          received: true,
+          duplicate: true,
+        });
+        return reply.send(response);
+      } else {
+        // Exists but not processed - use existing event and queue for processing
+        webhookEvent = existingEvent;
+        request.server.log.info(
+          `Re-queuing unprocessed webhook event: ${event.id}`,
+        );
+      }
+    } else {
+      // New event - save to database
+      webhookEvent = await createWebhookEvent(
+        event,
+        request.headers as Record<string, string>,
+        request.url,
+      );
     }
-
-    // Save webhook to database
-    const webhookEvent = await createStripeWebhookEvent(
-      request.server.db,
-      event,
-      request.headers as Record<string, string>,
-      request.url,
-    );
 
     // Queue job for async processing (if queue is available)
     if (request.server.queue) {
@@ -96,11 +109,17 @@ export default async function webhookRoute(
   } catch (error) {
     request.server.log.error(
       {
-        error,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorType: error instanceof Error ? error.constructor.name : 'Unknown',
         signature:
           typeof signature === 'string'
             ? signature.substring(0, 20)
             : 'unknown',
+        rawBodyLength: rawBody?.length,
+        webhookSecretPrefix: process.env.STRIPE_WEBHOOK_SECRET?.substring(
+          0,
+          10,
+        ),
       },
       'Webhook verification failed',
     );
@@ -110,8 +129,7 @@ export default async function webhookRoute(
       return reply.badRequest('Invalid signature');
     }
 
-    // For other errors, still return 200 to prevent Stripe retries
-    // The webhook will be processed by the worker when it's fixed
-    return reply.send({ received: true });
+    // For other errors, return 500 to allow Stripe to retry
+    return reply.internalServerError('Webhook processing failed');
   }
 }

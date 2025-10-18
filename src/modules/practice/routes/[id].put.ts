@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { updatePracticeService } from '../services/practice.service';
-import { updatePracticeSchema } from '../schemas/practice.schema';
-import { validateBody } from '@/shared/utils/validation';
+import { updatePracticeService } from '@/modules/practice/services/practice.service';
+import { updatePracticeSchema } from '@/modules/practice/validations/practice.validation';
+import { validateBody } from '@/shared/lib/validate';
 
 type UpdatePracticeRequest = {
   Params: {
@@ -14,10 +14,10 @@ type UpdatePracticeRequest = {
  * Update practice by ID (organization + optional practice details)
  * PUT /api/practice/:id
  */
-export default async function updatePractice(
+const updatePractice = async (
   request: FastifyRequest<UpdatePracticeRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   const validatedData = await validateBody(
     request,
     reply,
@@ -32,4 +32,6 @@ export default async function updatePractice(
     request.headers as Record<string, string>,
   );
   return reply.send({ practice });
-}
+};
+
+export default updatePractice;

@@ -1,4 +1,4 @@
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { settings, settingsHistory } from '../schemas/settings.schema';
 import { eq, and, desc } from 'drizzle-orm';
 

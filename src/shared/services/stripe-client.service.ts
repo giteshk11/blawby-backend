@@ -6,26 +6,35 @@
 
 import Stripe from 'stripe';
 
-// Initialize Stripe client
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-06-20',
-});
+// Lazy initialization of Stripe client
+let _stripe: Stripe | null = null;
 
 /**
- * Get Stripe client instance
+ * Get Stripe client instance (initializes on first call)
  */
-export const getStripeClient = function getStripeClient(): Stripe {
-  return stripe;
+export const getStripeClient = (): Stripe => {
+  if (!_stripe) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is required');
+    }
+
+    _stripe = new Stripe(apiKey, {
+      apiVersion: '2025-09-30.clover',
+    });
+  }
+
+  return _stripe;
 };
 
 /**
  * Get Stripe customers
  */
-export const getStripeCustomers = function getStripeCustomers(
+export const getStripeCustomers = (
   limit: number = 10,
   startingAfter?: string,
-): Promise<Stripe.ApiList<Stripe.Customer>> {
-  return stripe.customers.list({
+): Promise<Stripe.ApiList<Stripe.Customer>> => {
+  return getStripeClient().customers.list({
     limit,
     starting_after: startingAfter,
   });

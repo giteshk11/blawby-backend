@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { deletePracticeService } from '../services/practice.service';
+import { deletePracticeService } from '@/modules/practice/services/practice.service';
 
 type DeletePracticeRequest = {
   Params: {
@@ -11,10 +11,10 @@ type DeletePracticeRequest = {
  * Delete practice by ID (organization + practice details)
  * DELETE /api/practice/:id
  */
-export default async function deletePractice(
+const deletePractice = async (
   request: FastifyRequest<DeletePracticeRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   await deletePracticeService(
     request.params.id,
     request.user,
@@ -22,4 +22,6 @@ export default async function deletePractice(
     request.headers as Record<string, string>,
   );
   return reply.status(204).send();
-}
+};
+
+export default deletePractice;

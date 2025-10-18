@@ -8,7 +8,7 @@ import type {
 import fp from 'fastify-plugin';
 import { join } from 'path';
 import { existsSync, readdirSync, statSync } from 'fs';
-import { RouteConfig } from '../types/route-config';
+import { RouteConfig, RouteDefinition } from '../types/route-config';
 import { requireRoles } from '../middleware/roles';
 
 // HTTP methods that can be used in filenames
@@ -98,19 +98,25 @@ function isRoutePublic(
 ): boolean {
   const routePattern = `${method.toUpperCase()} ${path}`;
 
+  // Helper function to check if a route definition matches
+  const matchesRoute = (routeDef: string | RouteDefinition): boolean => {
+    if (typeof routeDef === 'string') {
+      return routeDef === routePattern || routeDef === path;
+    }
+
+    // Handle RouteDefinition object
+    return (
+      routeDef.method === method.toUpperCase() && routeDef.endpoint === path
+    );
+  };
+
   // If default is public, check if route is explicitly protected
   if (config.protected === false) {
-    return (
-      !config.private?.includes(routePattern) && !config.private?.includes(path)
-    );
+    return !config.private?.some(matchesRoute);
   }
 
   // If default is protected, check if route is explicitly public
-  return (
-    config.public?.includes(routePattern) ||
-    config.public?.includes(path) ||
-    false
-  );
+  return config.public?.some(matchesRoute) ?? false;
 }
 
 /**

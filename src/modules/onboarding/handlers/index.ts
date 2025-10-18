@@ -5,3 +5,8 @@
  */
 
 export { registerOnboardingHandlers } from './onboarding-completed.handler';
+export { handleAccountUpdated } from './account-updated.handler';
+export { handleCapabilityUpdated } from './capability-updated.handler';
+export { handleExternalAccountCreated } from './external-account-created.handler';
+export { handleExternalAccountUpdated } from './external-account-updated.handler';
+export { handleExternalAccountDeleted } from './external-account-deleted.handler';

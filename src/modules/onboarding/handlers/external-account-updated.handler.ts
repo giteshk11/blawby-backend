@@ -1,130 +1,119 @@
 import type Stripe from 'stripe';
-import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
+import { db } from '@/shared/database';
+import {
+  stripeConnectedAccounts,
+  ExternalAccounts,
+} from '@/modules/onboarding/schemas/onboarding.schema';
+import { publishSystemEvent } from '@/shared/events/event-publisher';
+import { EventType } from '@/shared/events/enums/event-types';
 
 /**
- * External Account Updated Handler
+ * Handle account.external_account.updated webhook event
  *
- * Handles Stripe account.external_account.updated webhook events.
- * Updates external account information (bank accounts, cards) in the database.
+ * Updates external account information (bank accounts, cards) in the database
+ * and publishes an ONBOARDING_EXTERNAL_ACCOUNT_UPDATED event.
+ * This is a pure function that doesn't depend on FastifyInstance.
  */
-export class ExternalAccountUpdatedHandler {
-  constructor(private fastify: FastifyInstance) {}
-
-  /**
-   * Handle external_account.updated webhook event
-   */
-  async handle(event: Stripe.Event): Promise<void> {
-    const externalAccount = event.data.object as Stripe.ExternalAccount;
-
-    this.fastify.log.info(
-      {
-        context: {
-          component: 'ExternalAccountUpdatedHandler',
-          operation: 'handle',
-          accountId: externalAccount.account,
-          externalAccountId: externalAccount.id,
-          type:
-            (externalAccount as Stripe.ExternalAccount & { type?: string })
-              .type || 'unknown',
-          eventId: event.id,
-        },
-      },
-      'Processing external_account.updated event',
+export const handleExternalAccountUpdated = async (
+  externalAccount: Stripe.ExternalAccount,
+): Promise<void> => {
+  try {
+    const accountType =
+      (externalAccount as Stripe.ExternalAccount & { type?: string }).type ||
+      'unknown';
+    console.log(
+      `Processing external_account.updated: ${externalAccount.id} (${accountType}) for account: ${externalAccount.account}`,
     );
 
-    try {
-      // Update external account
-      await this.updateExternalAccount(externalAccount);
+    // Get current account record
+    const account = await db
+      .select()
+      .from(stripeConnectedAccounts)
+      .where(
+        eq(
+          stripeConnectedAccounts.stripeAccountId,
+          externalAccount.account as string,
+        ),
+      )
+      .limit(1);
 
-      this.fastify.log.info(
-        {
-          context: {
-            component: 'ExternalAccountUpdatedHandler',
-            operation: 'handle',
-            accountId: externalAccount.account,
-            externalAccountId: externalAccount.id,
-            type:
-              (externalAccount as Stripe.ExternalAccount & { type?: string })
-                .type || 'unknown',
-            eventId: event.id,
-          },
-        },
-        'External account updated successfully',
+    if (account.length === 0) {
+      console.warn(
+        `Account not found for external account update: ${externalAccount.account}`,
       );
-    } catch (error) {
-      this.fastify.log.error(
-        {
-          error:
-            error instanceof Error
-              ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
-              : error,
-          context: {
-            component: 'ExternalAccountUpdatedHandler',
-            operation: 'handle',
-            accountId: externalAccount.account,
-            externalAccountId: externalAccount.id,
-            type:
-              (externalAccount as Stripe.ExternalAccount & { type?: string })
-                .type || 'unknown',
-            eventId: event.id,
-          },
-        },
-        'Failed to update external account',
-      );
-
-      throw error;
+      return;
     }
-  }
 
-  /**
-   * Update external account in database
-   * TODO: Implement external account updates
-   */
-  private async updateExternalAccount(
-    externalAccount: Stripe.ExternalAccount,
-  ): Promise<void> {
-    this.fastify.log.debug(
-      {
-        context: {
-          component: 'ExternalAccountUpdatedHandler',
-          operation: 'updateExternalAccount',
-          accountId: externalAccount.account,
-          externalAccountId: externalAccount.id,
-          type:
-            (externalAccount as Stripe.ExternalAccount & { type?: string })
-              .type || 'unknown',
-          metadata: externalAccount.metadata,
-        },
+    const currentAccount = account[0];
+
+    // Update external accounts JSONB field
+    const currentExternalAccounts =
+      (currentAccount.externalAccounts as Record<string, unknown>) || {};
+    const updatedExternalAccounts = {
+      ...currentExternalAccounts,
+      [externalAccount.id]: {
+        id: externalAccount.id,
+        type: accountType,
+        status: externalAccount.status,
+        metadata: externalAccount.metadata,
+        // Store additional fields based on type
+        ...(accountType === 'card' && {
+          brand: (externalAccount as Stripe.Card).brand,
+          last4: (externalAccount as Stripe.Card).last4,
+          exp_month: (externalAccount as Stripe.Card).exp_month,
+          exp_year: (externalAccount as Stripe.Card).exp_year,
+        }),
+        ...(accountType === 'bank_account' && {
+          bank_name: (externalAccount as Stripe.BankAccount).bank_name,
+          last4: (externalAccount as Stripe.BankAccount).last4,
+          routing_number: (externalAccount as Stripe.BankAccount)
+            .routing_number,
+        }),
       },
-      'Updating external account (implementation pending)',
+    };
+
+    // Update the account external accounts in the database
+    await db
+      .update(stripeConnectedAccounts)
+      .set({
+        externalAccounts:
+          updatedExternalAccounts as unknown as ExternalAccounts,
+        lastRefreshedAt: new Date(),
+      })
+      .where(
+        eq(
+          stripeConnectedAccounts.stripeAccountId,
+          externalAccount.account as string,
+        ),
+      );
+
+    // Publish external account updated event
+    await publishSystemEvent(
+      EventType.ONBOARDING_EXTERNAL_ACCOUNT_UPDATED,
+      {
+        stripeAccountId: externalAccount.account,
+        organizationId: currentAccount.organizationId,
+        externalAccountId: externalAccount.id,
+        externalAccountType: accountType,
+        externalAccountStatus: externalAccount.status,
+        metadata: externalAccount.metadata,
+        previousExternalAccounts: currentExternalAccounts,
+        updatedAt: new Date().toISOString(),
+      },
+      'stripe-webhook',
+      'webhook',
+      currentAccount.organizationId,
     );
 
-    // TODO: Implement external account updates
-    // 1. Find existing external account record
-    // 2. Update verification status, requirements, etc.
-    // 3. Handle status changes (verified, failed, etc.)
+    console.log(
+      `External account updated and event published for: ${externalAccount.id}`,
+    );
+  } catch (error) {
+    console.error(
+      `Failed to update external account: ${externalAccount.id}`,
+      error,
+    );
+    throw error;
   }
-}
-
-// Function wrapper for webhook processor
-export const handleExternalAccountUpdated =
-  async function handleExternalAccountUpdated(
-    fastify: FastifyInstance,
-    event: {
-      eventId: string;
-      eventType: string;
-      payload: Stripe.ExternalAccount;
-    },
-  ): Promise<void> {
-    const handler = new ExternalAccountUpdatedHandler(fastify);
-    const stripeEvent = {
-      id: event.eventId,
-      type: event.eventType,
-      data: { object: event.payload },
-    } as Stripe.Event;
-    await handler.handle(stripeEvent);
-  };
+};

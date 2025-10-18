@@ -1,0 +1,89 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { config } from '@dotenvx/dotenvx';
+import { readdirSync, statSync } from 'fs';
+import { join } from 'path';
+
+// Load environment variables
+config();
+
+// Validate DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+/**
+ * Auto-discover and import all schema files
+ * This dynamically loads schemas from modules at runtime
+ */
+async function loadAllSchemas() {
+  const schemas: Record<string, any> = {};
+  
+  // Load Better Auth schemas
+  const betterAuthSchema = await import('../schema/better-auth-schema');
+  Object.assign(schemas, betterAuthSchema);
+  
+  // Auto-discover module schemas
+  const modulesPath = join(__dirname, '../modules');
+  
+  function findSchemaFiles(dir: string): string[] {
+    const files: string[] = [];
+    
+    try {
+      const items = readdirSync(dir);
+      
+      for (const item of items) {
+        const fullPath = join(dir, item);
+        const stat = statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+          files.push(...findSchemaFiles(fullPath));
+        } else if (item.endsWith('.schema.ts')) {
+          files.push(fullPath);
+        }
+      }
+    } catch (error) {
+      // Skip if directory doesn't exist
+    }
+    
+    return files;
+  }
+  
+  // Find and import all schema files
+  const schemaFiles = findSchemaFiles(modulesPath);
+  
+  // Also check shared directory
+  const sharedPath = join(__dirname, '../shared');
+  schemaFiles.push(...findSchemaFiles(sharedPath));
+  
+  // Import all discovered schemas
+  for (const file of schemaFiles) {
+    try {
+      const module = await import(file);
+      Object.assign(schemas, module);
+    } catch (error) {
+      console.error(`Failed to load schema from ${file}:`, error);
+    }
+  }
+  
+  return schemas;
+}
+
+// Create the connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Initialize with dynamically loaded schemas
+let dbInstance: ReturnType<typeof drizzle> | null = null;
+
+export async function getDb() {
+  if (!dbInstance) {
+    const schemas = await loadAllSchemas();
+    dbInstance = drizzle(pool, { schema: schemas });
+  }
+  return dbInstance;
+}
+
+// For synchronous usage (will be initialized on first async call)
+export const db = drizzle(pool);

@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import {
+import type {
   CreateOrganizationRequest,
   UpdateOrganizationRequest,
-  CheckOrganizationSlugResponse,
-} from '@/types/better-auth';
+  OrganizationListItem,
+} from '@/modules/practice/types/practice.types';
 import { eq } from 'drizzle-orm';
 import {
   organizations as organizationTable,
@@ -11,22 +11,18 @@ import {
 } from '@/schema';
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishEvent } from '@/shared/events/dispatcher';
-
-type User = {
-  id: string;
-  email: string;
-};
-
-type CreateOrganizationDto = CreateOrganizationRequest;
-type UpdateOrganizationDto = UpdateOrganizationRequest['data'];
+import type {
+  Organization,
+  User,
+  ActiveOrganization,
+} from '@/shared/types/better-auth';
 
 export const createOrganization = async (
-  data: CreateOrganizationDto,
+  data: CreateOrganizationRequest,
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
-  // Business validation
+): Promise<Organization | null> => {
   if (!data.name) {
     throw fastify.httpErrors.badRequest('Organization name is required');
   }
@@ -36,10 +32,9 @@ export const createOrganization = async (
   }
 
   // Check if slug is available
-  const slugCheck: CheckOrganizationSlugResponse =
-    await fastify.betterAuth.api.checkOrganizationSlug({
-      body: { slug: data.slug },
-    });
+  const slugCheck = await fastify.betterAuth.api.checkOrganizationSlug({
+    body: { slug: data.slug },
+  });
 
   if (!slugCheck.status) {
     throw fastify.httpErrors.conflict(
@@ -54,7 +49,6 @@ export const createOrganization = async (
 
   // Publish practice created event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_CREATED,
     actorId: user.id,
     organizationId: result?.id || 'unknown',
@@ -74,7 +68,7 @@ export const listOrganizations = async (
   user: User,
   fastify: FastifyInstance,
   _requestHeaders: Record<string, string>,
-) => {
+): Promise<OrganizationListItem[]> => {
   // Query organizations directly from database
   const organizations = await fastify.db
     .select({
@@ -101,7 +95,7 @@ export const getFullOrganization = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<ActiveOrganization> => {
   const result = await fastify.betterAuth.api.getFullOrganization({
     query: { organizationId },
     headers: requestHeaders,
@@ -111,11 +105,11 @@ export const getFullOrganization = async (
 
 export const updateOrganization = async (
   organizationId: string,
-  data: UpdateOrganizationDto,
+  data: UpdateOrganizationRequest,
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<Organization | null> => {
   const result = await fastify.betterAuth.api.updateOrganization({
     body: {
       organizationId,
@@ -126,7 +120,6 @@ export const updateOrganization = async (
 
   // Publish practice updated event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_UPDATED,
     actorId: user.id,
     organizationId,
@@ -147,7 +140,7 @@ export const deleteOrganization = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<Organization | null> => {
   const result = await fastify.betterAuth.api.deleteOrganization({
     body: { organizationId },
     headers: requestHeaders,
@@ -155,7 +148,6 @@ export const deleteOrganization = async (
 
   // Publish practice deleted event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_DELETED,
     actorId: user.id,
     organizationId,
@@ -173,7 +165,7 @@ export const setActiveOrganization = async (
   user: User,
   fastify: FastifyInstance,
   requestHeaders: Record<string, string>,
-) => {
+): Promise<ActiveOrganization | null> => {
   const result = await fastify.betterAuth.api.setActiveOrganization({
     body: { organizationId },
     headers: requestHeaders,
@@ -181,7 +173,6 @@ export const setActiveOrganization = async (
 
   // Publish practice switched event
   await publishEvent({
-    fastify,
     eventType: EventType.PRACTICE_SWITCHED,
     actorId: user.id,
     organizationId,
@@ -197,9 +188,9 @@ export const setActiveOrganization = async (
 export const checkOrganizationSlug = async (
   slug: string,
   fastify: FastifyInstance,
-) => {
+): Promise<boolean> => {
   const result = await fastify.betterAuth.api.checkOrganizationSlug({
     body: { slug },
   });
-  return result;
+  return result.status;
 };

@@ -1,17 +1,10 @@
-import Stripe from 'stripe';
 import type { FastifyInstance } from 'fastify';
 import {
-  getStripeAccounts,
-  getStripeAccountSessions,
-} from '@/modules/onboarding/services/stripe-client.service';
-import {
   findByOrganization,
-  findByStripeId,
   createStripeConnectedAccount,
-  updateStripeConnectedAccountByStripeId,
-  updateLastRefreshed,
   createSession,
   revokeOldSessions,
+  updateLastRefreshed,
 } from '@/modules/onboarding/repositories/onboarding.repository';
 import type {
   StripeConnectedAccount,
@@ -25,6 +18,7 @@ import type {
   Capabilities,
   ExternalAccounts,
 } from '@/modules/onboarding/schemas/onboarding.schema';
+import { getStripeClient } from '@/shared/services/stripe-client.service';
 import { EventType } from '@/shared/events/enums/event-types';
 
 export const createOrGetAccount = async (
@@ -33,7 +27,7 @@ export const createOrGetAccount = async (
   email: string,
 ): Promise<CreateAccountResponse> => {
   // Check if account exists for organization
-  let account = await findByOrganization(fastify.db, organizationId);
+  let account = await findByOrganization(organizationId);
 
   if (account) {
     // Account exists - always create a fresh session
@@ -52,7 +46,8 @@ export const createOrGetAccount = async (
     // Generate a fresh account session
     const session = await createOnboardingSession(
       fastify,
-      account.stripeAccountId,
+      account.email,
+      organizationId,
     );
 
     return {
@@ -68,8 +63,8 @@ export const createOrGetAccount = async (
     };
   }
 
-  // Create new Stripe account
-  const stripeAccount = await getStripeAccounts().create({
+  const stripe = getStripeClient();
+  const stripeAccount = await stripe.accounts.create({
     country: 'US',
     email,
     capabilities: {
@@ -105,10 +100,10 @@ export const createOrGetAccount = async (
     lastRefreshedAt: new Date(),
   };
 
-  account = await createStripeConnectedAccount(fastify.db, newAccount);
+  account = await createStripeConnectedAccount(newAccount);
 
   // Generate account session
-  const session = await createOnboardingSession(fastify, stripeAccount.id);
+  const session = await createOnboardingSession(fastify, email, organizationId);
 
   // Publish billing onboarding started event
   await fastify.events.publish({
@@ -140,14 +135,23 @@ export const createOrGetAccount = async (
 
 export const createOnboardingSession = async (
   fastify: FastifyInstance,
-  stripeAccountId: string,
+  email: string,
+  organizationId: string,
 ): Promise<CreateSessionResponse> => {
+  // Create or get existing account
+  const accountResponse = await createOrGetAccount(
+    fastify,
+    organizationId,
+    email,
+  );
+
   // Revoke old onboarding sessions first (before creating new one)
-  await revokeOldSessions(fastify.db, stripeAccountId, 'onboarding');
+  await revokeOldSessions(accountResponse.accountId, 'onboarding');
 
   // Create session with Stripe
-  const session = await getStripeAccountSessions().create({
-    account: stripeAccountId,
+  const stripe = getStripeClient();
+  const session = await stripe.accountSessions.create({
+    account: accountResponse.accountId,
     components: {
       account_onboarding: {
         enabled: true,
@@ -157,8 +161,8 @@ export const createOnboardingSession = async (
 
   // Store new session in database - ensure UTC timezone
   const expiresAtUTC = new Date(session.expires_at * 1000);
-  await createSession(fastify.db, {
-    stripeAccountId,
+  await createSession({
+    stripeAccountId: accountResponse.accountId,
     sessionType: 'onboarding',
     clientSecret: session.client_secret,
     expiresAt: expiresAtUTC,
@@ -171,7 +175,7 @@ export const createOnboardingSession = async (
   fastify.log.info(
     {
       context: {
-        stripeAccountId,
+        stripeAccountId: accountResponse.accountId,
         sessionDurationSeconds: sessionDuration,
         sessionDurationMinutes: Math.round(sessionDuration / 60),
         sessionDurationHours: Math.round(sessionDuration / 3600),
@@ -185,7 +189,7 @@ export const createOnboardingSession = async (
   );
 
   // Update last refreshed timestamp
-  await updateLastRefreshed(fastify.db, stripeAccountId);
+  await updateLastRefreshed(accountResponse.accountId);
 
   return {
     clientSecret: session.client_secret,
@@ -198,10 +202,11 @@ export const createPaymentsSession = async (
   stripeAccountId: string,
 ): Promise<CreateSessionResponse> => {
   // Revoke old payments sessions first (before creating new one)
-  await revokeOldSessions(fastify.db, stripeAccountId, 'payments');
+  await revokeOldSessions(stripeAccountId, 'payments');
 
   // Create session with Stripe
-  const session = await getStripeAccountSessions().create({
+  const stripe = getStripeClient();
+  const session = await stripe.accountSessions.create({
     account: stripeAccountId,
     components: {
       payments: {
@@ -217,7 +222,7 @@ export const createPaymentsSession = async (
 
   // Store new session in database - ensure UTC timezone
   const expiresAtUTC = new Date(session.expires_at * 1000);
-  await createSession(fastify.db, {
+  await createSession({
     stripeAccountId,
     sessionType: 'payments',
     clientSecret: session.client_secret,
@@ -245,7 +250,7 @@ export const createPaymentsSession = async (
   );
 
   // Update last refreshed timestamp
-  await updateLastRefreshed(fastify.db, stripeAccountId);
+  await updateLastRefreshed(stripeAccountId);
 
   return {
     clientSecret: session.client_secret,
@@ -257,7 +262,7 @@ export const getAccount = async (
   fastify: FastifyInstance,
   organizationId: string,
 ): Promise<GetAccountResponse | null> => {
-  const account = await findByOrganization(fastify.db, organizationId);
+  const account = await findByOrganization(organizationId);
 
   if (!account) {
     return null;
@@ -297,64 +302,4 @@ export const isAccountActive = (account: StripeConnectedAccount): boolean => {
   }
 
   return true;
-};
-
-export const handleAccountUpdated = async (
-  fastify: FastifyInstance,
-  stripeAccountId: string,
-  accountData: Stripe.Account,
-): Promise<void> => {
-  const account = await findByStripeId(fastify.db, stripeAccountId);
-
-  if (!account) {
-    fastify.log.warn(`Account not found for Stripe ID: ${stripeAccountId}`);
-    return;
-  }
-
-  // Update account data
-  const updateData: Partial<NewStripeConnectedAccount> = {
-    chargesEnabled: accountData.charges_enabled,
-    payoutsEnabled: accountData.payouts_enabled,
-    detailsSubmitted: accountData.details_submitted,
-    businessType: accountData.business_type,
-    company: accountData.company as CompanyInfo | undefined,
-    individual: accountData.individual as IndividualInfo | undefined,
-    requirements: accountData.requirements as Requirements | undefined,
-    capabilities: accountData.capabilities as Capabilities | undefined,
-    externalAccounts: accountData.external_accounts as
-      | ExternalAccounts
-      | undefined,
-    metadata: accountData.metadata as Record<string, string> | undefined,
-  };
-
-  // If details are submitted and onboarding wasn't completed before, mark as completed
-  if (accountData.details_submitted && !account.onboardingCompletedAt) {
-    updateData.onboardingCompletedAt = new Date();
-    fastify.log.info(`Onboarding completed for account: ${stripeAccountId}`);
-
-    // Publish onboarding completed event
-    await fastify.events.publish({
-      eventType: EventType.ONBOARDING_COMPLETED,
-      eventVersion: '1.0.0',
-      actorId: 'webhook-stripe',
-      actorType: 'webhook',
-      organizationId: account.organizationId,
-      payload: {
-        stripeAccountId,
-        chargesEnabled: accountData.charges_enabled,
-        payoutsEnabled: accountData.payouts_enabled,
-        detailsSubmitted: accountData.details_submitted,
-        businessType: accountData.business_type,
-        userEmail: account.email,
-        organizationName: 'Unknown', // TODO: Get from organization
-      },
-      metadata: fastify.events.createMetadata('webhook'),
-    });
-  }
-
-  await updateStripeConnectedAccountByStripeId(
-    fastify.db,
-    stripeAccountId,
-    updateData,
-  );
 };

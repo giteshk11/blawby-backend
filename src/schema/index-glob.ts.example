@@ -1,0 +1,25 @@
+/**
+ * Auto-import all schemas using glob patterns
+ * This works at build time with bundlers that support import.meta.glob
+ */
+
+// Better Auth schemas
+export * from './better-auth-schema';
+
+// Auto-import all module schemas using glob
+// Note: This requires a bundler like Vite or a custom loader
+const moduleSchemas = import.meta.glob('../modules/**/schema/*.schema.ts', { eager: true });
+const sharedSchemas = import.meta.glob('../shared/**/schemas/*.schema.ts', { eager: true });
+
+// Re-export everything from the discovered modules
+Object.values(moduleSchemas).forEach((mod: any) => {
+  Object.entries(mod).forEach(([key, value]) => {
+    (exports as any)[key] = value;
+  });
+});
+
+Object.values(sharedSchemas).forEach((mod: any) => {
+  Object.entries(mod).forEach(([key, value]) => {
+    (exports as any)[key] = value;
+  });
+});

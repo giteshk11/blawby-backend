@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  integer,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -19,6 +26,7 @@ export const sessions = pgTable('sessions', {
   token: text('token').notNull().unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
+    .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   ipAddress: text('ip_address'),
@@ -45,6 +53,7 @@ export const accounts = pgTable('accounts', {
   password: text('password'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
+    .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
@@ -75,6 +84,10 @@ export const organizations = pgTable('organizations', {
   billingEmail: text('billing_email'),
   activeSubscriptionId: text('active_subscription_id'),
   paymentMethodSetupAt: timestamp('payment_method_setup_at'),
+
+  // Payment Links settings
+  paymentLinkEnabled: boolean('payment_link_enabled').default(false),
+  paymentLinkPrefillAmount: integer('payment_link_prefill_amount').default(0),
 });
 
 export const members = pgTable('members', {
@@ -102,3 +115,52 @@ export const invitations = pgTable('invitations', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
 });
+
+// Define relations
+export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(sessions),
+  accounts: many(accounts),
+  members: many(members),
+  invitations: many(invitations),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(members),
+  invitations: many(invitations),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const membersRelations = relations(members, ({ one }) => ({
+  user: one(users, {
+    fields: [members.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [members.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [invitations.organizationId],
+    references: [organizations.id],
+  }),
+  inviter: one(users, {
+    fields: [invitations.inviterId],
+    references: [users.id],
+  }),
+}));

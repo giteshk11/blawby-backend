@@ -1,25 +1,22 @@
 // src/types/fastify.d.ts
-import type { betterAuth } from 'better-auth';
+import { User } from '@/schema';
+import type { BetterAuthInstance } from '@/shared/auth/better-auth';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '@/schema';
 
 declare module 'fastify' {
   interface FastifyInstance {
-    db: NodePgDatabase;
-    betterAuth: ReturnType<typeof betterAuth>;
+    db: NodePgDatabase<typeof schema>;
+    betterAuth: BetterAuthInstance;
     verifyAuth(request: FastifyRequest, reply: FastifyReply): Promise<void>;
   }
-
   interface FastifyRequest {
-    user?: {
-      id: string;
-      email: string;
-      name: string;
-      [key: string]: unknown;
-    };
-    session?: {
+    user?: User;
+    session?: typeof schema.sessions.$inferSelect & {
       id: string;
       userId: string;
       expiresAt: Date;
+      activeOrganizationId: string | null;
       [key: string]: unknown;
     };
     userId?: string;

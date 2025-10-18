@@ -1,10 +1,11 @@
-import { eq, and, type Json } from 'drizzle-orm';
-import { db } from '@/database';
+import { eq, and } from 'drizzle-orm';
+import { db } from '@/shared/database';
 import {
   clients,
   type InsertClient,
   type SelectClient,
 } from '@/modules/clients/database/schema/clients.schema';
+import type { ClientAddress } from '@/modules/clients/database/schema/clients.schema';
 
 export const clientsRepository = {
   /**
@@ -17,13 +18,7 @@ export const clientsRepository = {
       .where(eq(clients.id, id))
       .limit(1);
 
-    return results[0]
-      ? {
-          ...results[0],
-          metadata: results[0].metadata as Json,
-          address: results[0].address as Json,
-        }
-      : null;
+    return results[0] ?? null;
   },
 
   /**
@@ -41,8 +36,8 @@ export const clientsRepository = {
     return results[0]
       ? {
           ...results[0],
-          metadata: results[0].metadata as Json,
-          address: results[0].address as Json,
+          metadata: results[0].metadata,
+          address: results[0].address as ClientAddress,
         }
       : null;
   },
@@ -60,7 +55,7 @@ export const clientsRepository = {
     return results[0]
       ? {
           ...results[0],
-          metadata: results[0].metadata as Json,
+          metadata: results[0].metadata as JSON,
           address: results[0].address as Json,
         }
       : null;
@@ -79,8 +74,8 @@ export const clientsRepository = {
     return results[0]
       ? {
           ...results[0],
-          metadata: results[0].metadata as Json,
-          address: results[0].address as Json,
+          metadata: results[0].metadata as JSON,
+          address: results[0].address as ClientAddress,
         }
       : null;
   },
@@ -94,31 +89,16 @@ export const clientsRepository = {
       .from(clients)
       .where(eq(clients.organizationId, organizationId));
 
-    return results.map((result) => ({
-      ...result,
-      metadata: result.metadata as Json,
-      address: result.address as Json,
-    }));
+    return results;
   },
 
   /**
    * Create a new client
    */
   async create(data: InsertClient): Promise<SelectClient> {
-    const [result] = await db
-      .insert(clients)
-      .values({
-        ...data,
-        metadata: data.metadata as Json,
-        address: data.address as Json,
-      })
-      .returning();
+    const [result] = await db.insert(clients).values(data).returning();
 
-    return {
-      ...result,
-      metadata: result.metadata as Json,
-      address: result.address as Json,
-    };
+    return result;
   },
 
   /**
@@ -133,19 +113,11 @@ export const clientsRepository = {
       .set({
         ...data,
         updatedAt: new Date(),
-        metadata: data.metadata as Json,
-        address: data.address as Json,
       })
       .where(eq(clients.id, id))
       .returning();
 
-    return result
-      ? {
-          ...result,
-          metadata: result.metadata as Json,
-          address: result.address as Json,
-        }
-      : null;
+    return result ?? null;
   },
 
   /**
@@ -160,8 +132,8 @@ export const clientsRepository = {
       .set({
         ...data,
         updatedAt: new Date(),
-        metadata: data.metadata as Json,
-        address: data.address as Json,
+        metadata: data.metadata as JSON,
+        address: data.address as ClientAddress,
       })
       .where(eq(clients.stripeCustomerId, stripeCustomerId))
       .returning();
@@ -169,8 +141,8 @@ export const clientsRepository = {
     return result
       ? {
           ...result,
-          metadata: result.metadata as Json,
-          address: result.address as Json,
+          metadata: result.metadata as JSON,
+          address: result.address as ClientAddress,
         }
       : null;
   },
@@ -207,8 +179,8 @@ export const clientsRepository = {
 
     return results.map((result) => ({
       ...result,
-      metadata: result.metadata as Json,
-      address: result.address as Json,
+      metadata: result.metadata as JSON,
+      address: result.address as ClientAddress,
     }));
   },
 };

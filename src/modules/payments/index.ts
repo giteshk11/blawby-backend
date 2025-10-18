@@ -1,5 +1,4 @@
-// Payments Feature Module
-export * from './database/schema';
-export * from './database/queries';
-export * from './services';
-export * from './handlers';
+// Barrel exports for external imports from other modules only
+export * from './types/payments.types';
+export * from './validations/payments.validation';
+// Add repository exports when created

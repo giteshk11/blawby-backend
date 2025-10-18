@@ -1,5 +1,4 @@
-// Invoices Feature Module
-export * from './database/schema';
-export * from './database/queries';
-export * from './services';
-export * from './handlers';
+// Barrel exports for external imports from other modules only
+export * from './types/invoices.types';
+export * from './validations/invoices.validation';
+// Add repository exports when created

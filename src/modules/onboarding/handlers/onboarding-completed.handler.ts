@@ -9,15 +9,26 @@ import { EventType } from '@/shared/events/enums/event-types';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
 import { createPaymentSetupService } from '@/modules/subscriptions/services/payment-setup.service';
 import { createSubscriptionService } from '@/modules/subscriptions/services/subscription.service';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { organizations } from '@/schema/better-auth-schema';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
 
-// Initialize Stripe with platform secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-});
+// Lazy initialization of Stripe client
+let stripe: Stripe | null = null;
+
+function getStripeClient(): Stripe {
+  if (!stripe) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is required');
+    }
+    stripe = new Stripe(apiKey, {
+      apiVersion: '2025-09-30.clover',
+    });
+  }
+  return stripe;
+}
 
 /**
  * Handle onboarding completion and automatically create subscription
@@ -64,7 +75,7 @@ const handleOnboardingCompleted = async (event: BaseEvent): Promise<void> => {
           timestamp: new Date().toISOString(),
         }),
       },
-      stripe,
+      stripe: getStripeClient(),
     };
 
     // Get organization details

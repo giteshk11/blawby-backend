@@ -9,7 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { subscriptions, subscriptionEvents } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 
 export const handleInvoicePaymentSucceeded =
   async function handleInvoicePaymentSucceeded(

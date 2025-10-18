@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { updateUserSettings } from '../services/settings.service';
-import { validateBody } from '@/shared/utils/validation';
+import { validateBody } from '@/shared/lib/validate';
 import { updateUserSettingsSchema } from '@/shared/validations/settings';
 
 type UpdateUserSettingsRequest = {
@@ -11,10 +11,10 @@ type UpdateUserSettingsRequest = {
  * Update user settings
  * PUT /api/settings/user
  */
-export default async function updateUserSettingsRoute(
+const updateUserSettingsRoute = async (
   request: FastifyRequest<UpdateUserSettingsRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   const validatedData = await validateBody(
     request,
     reply,
@@ -29,4 +29,6 @@ export default async function updateUserSettingsRoute(
   );
 
   return reply.send({ data: settings });
-}
+};
+
+export default updateUserSettingsRoute;

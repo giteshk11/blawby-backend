@@ -1,4 +1,4 @@
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { events } from '@/shared/events/schemas/events.schema';
 import { eventBus } from './event-consumer';
 import type {
@@ -6,7 +6,6 @@ import type {
   EventMetadata,
 } from '@/shared/events/schemas/events.schema';
 import type { EventType } from '@/shared/events/enums/event-types';
-import type { FastifyInstance } from 'fastify';
 
 export const publishEvent = async (
   event: Omit<BaseEvent, 'eventId' | 'timestamp' | 'processed' | 'retryCount'>,
@@ -59,21 +58,20 @@ export const createEventMetadata = (
 
 // Helper function for common practice events
 export const publishPracticeEvent = async (
-  fastify: FastifyInstance,
   eventType: EventType,
   actorId: string,
   organizationId: string,
   payload: Record<string, unknown>,
   requestHeaders?: Record<string, string>,
 ): Promise<BaseEvent> => {
-  return fastify.events.publish({
+  return publishEvent({
     eventType,
     eventVersion: '1.0.0',
     actorId: actorId,
     actorType: 'user',
     organizationId,
     payload,
-    metadata: fastify.events.createMetadata('api', {
+    metadata: createEventMetadata('api', {
       headers: requestHeaders,
     }),
   });
@@ -81,19 +79,18 @@ export const publishPracticeEvent = async (
 
 // Helper function for user events
 export const publishUserEvent = async (
-  fastify: FastifyInstance,
   eventType: EventType,
   actorId: string,
   payload: Record<string, unknown>,
   requestHeaders?: Record<string, string>,
 ): Promise<BaseEvent> => {
-  return fastify.events.publish({
+  return publishEvent({
     eventType,
     eventVersion: '1.0.0',
     actorId: actorId,
     actorType: 'user',
     payload,
-    metadata: fastify.events.createMetadata('api', {
+    metadata: createEventMetadata('api', {
       headers: requestHeaders,
     }),
   });
@@ -101,20 +98,19 @@ export const publishUserEvent = async (
 
 // Helper function for system events
 export const publishSystemEvent = async (
-  fastify: FastifyInstance,
   eventType: EventType,
   payload: Record<string, unknown>,
   actorId?: string,
   actorType: string = 'system',
   organizationId?: string,
 ): Promise<BaseEvent> => {
-  return fastify.events.publish({
+  return publishEvent({
     eventType,
     eventVersion: '1.0.0',
     actorId,
     actorType,
     organizationId,
     payload,
-    metadata: fastify.events.createMetadata('system'),
+    metadata: createEventMetadata('system'),
   });
 };

@@ -1,7 +1,5 @@
 import type Stripe from 'stripe';
-import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { db } from '@/database';
 import {
   stripeConnectedAccounts,
   type Requirements,
@@ -10,78 +8,35 @@ import {
   type IndividualInfo,
   ExternalAccounts,
 } from '@/modules/onboarding/schemas/onboarding.schema';
+import { db } from '@/shared/database';
+import { publishSystemEvent } from '@/shared/events/event-publisher';
+import { EventType } from '@/shared/events/enums/event-types';
 
 /**
- * Account Updated Handler
+ * Handle account.updated webhook event
  *
- * Handles Stripe account.updated webhook events.
- * Updates the connected account record in the database with latest status.
+ * Updates the connected account record in the database with latest status
+ * and publishes an ONBOARDING_ACCOUNT_UPDATED event.
+ * This is a pure function that doesn't depend on FastifyInstance.
  */
-export class AccountUpdatedHandler {
-  constructor(private fastify: FastifyInstance) {}
+export const handleAccountUpdated = async (
+  account: Stripe.Account,
+): Promise<void> => {
+  try {
+    // First, get the current account data to retrieve organizationId
+    const existingAccount = await db
+      .select()
+      .from(stripeConnectedAccounts)
+      .where(eq(stripeConnectedAccounts.stripeAccountId, account.id))
+      .limit(1);
 
-  /**
-   * Handle account.updated webhook event
-   */
-  async handle(event: Stripe.Event): Promise<void> {
-    const account = event.data.object as Stripe.Account;
-
-    this.fastify.log.info(
-      {
-        context: {
-          component: 'AccountUpdatedHandler',
-          operation: 'handle',
-          accountId: account.id,
-          eventId: event.id,
-        },
-      },
-      'Processing account.updated event',
-    );
-
-    try {
-      // Update connected account record
-      await this.updateConnectedAccount(account);
-
-      this.fastify.log.info(
-        {
-          context: {
-            component: 'AccountUpdatedHandler',
-            operation: 'handle',
-            accountId: account.id,
-            eventId: event.id,
-          },
-        },
-        'Account updated successfully',
-      );
-    } catch (error) {
-      this.fastify.log.error(
-        {
-          error:
-            error instanceof Error
-              ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack,
-                }
-              : error,
-          context: {
-            component: 'AccountUpdatedHandler',
-            operation: 'handle',
-            accountId: account.id,
-            eventId: event.id,
-          },
-        },
-        'Failed to update account',
-      );
-
-      throw error;
+    if (!existingAccount.length) {
+      console.error(`Account not found for Stripe ID: ${account.id}`);
+      return;
     }
-  }
 
-  /**
-   * Update connected account in database
-   */
-  private async updateConnectedAccount(account: Stripe.Account): Promise<void> {
+    const currentAccount = existingAccount[0];
+
     const updateData = {
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
@@ -96,40 +51,37 @@ export class AccountUpdatedHandler {
       lastRefreshedAt: new Date(),
     };
 
+    // Update the account in the database
     await db
       .update(stripeConnectedAccounts)
       .set(updateData)
       .where(eq(stripeConnectedAccounts.stripeAccountId, account.id));
 
-    this.fastify.log.debug(
+    // Publish account updated event
+    await publishSystemEvent(
+      EventType.ONBOARDING_ACCOUNT_UPDATED,
       {
-        context: {
-          component: 'AccountUpdatedHandler',
-          operation: 'updateConnectedAccount',
-          accountId: account.id,
-          updateData: {
-            chargesEnabled: updateData.chargesEnabled,
-            payoutsEnabled: updateData.payoutsEnabled,
-            detailsSubmitted: updateData.detailsSubmitted,
-            businessType: updateData.businessType,
-          },
-        },
+        stripeAccountId: account.id,
+        organizationId: currentAccount.organizationId,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+        businessType: account.business_type,
+        requirements: account.requirements,
+        capabilities: account.capabilities,
+        previousChargesEnabled: currentAccount.chargesEnabled,
+        previousPayoutsEnabled: currentAccount.payoutsEnabled,
+        previousDetailsSubmitted: currentAccount.detailsSubmitted,
+        updatedAt: new Date().toISOString(),
       },
-      'Connected account updated in database',
+      'stripe-webhook',
+      'webhook',
+      currentAccount.organizationId,
     );
-  }
-}
 
-// Function wrapper for webhook processor
-export const handleAccountUpdated = async function handleAccountUpdated(
-  fastify: FastifyInstance,
-  event: { eventId: string; eventType: string; payload: Stripe.Account },
-): Promise<void> {
-  const handler = new AccountUpdatedHandler(fastify);
-  const stripeEvent = {
-    id: event.eventId,
-    type: event.eventType,
-    data: { object: event.payload },
-  } as Stripe.Event;
-  await handler.handle(stripeEvent);
+    console.log(`Account updated and event published for: ${account.id}`);
+  } catch (error) {
+    console.error(`Failed to update account: ${account.id}`, error);
+    throw error;
+  }
 };

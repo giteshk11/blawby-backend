@@ -3,7 +3,6 @@ import closeWithGrace from 'close-with-grace';
 import * as dotenvx from '@dotenvx/dotenvx';
 // Require the framework
 import Fastify from 'fastify';
-import { consola } from 'consola';
 import { FastifyRequest } from 'fastify';
 import app from './app';
 import fs from 'fs';
@@ -48,8 +47,7 @@ try {
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
 
-// Configure Consola for beautiful logging
-consola.level = isProduction ? 3 : 4; // Error level in production, Info level in development
+// Logger configuration is handled by pino-pretty transport
 
 // Development optimizations
 if (isDevelopment) {
@@ -95,9 +93,6 @@ const server = Fastify({
     },
   }),
 });
-
-// Add custom logging methods using Consola
-server.decorate('consola', consola);
 
 // Register your application as a normal plugin with API prefix.
 void server.register(app, { prefix: '/api' });

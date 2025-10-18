@@ -8,7 +8,7 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { organizations } from '@/schema/better-auth-schema';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 
 export interface CreatePlatformCustomerRequest {
   organizationId: string;

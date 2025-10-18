@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 import { events } from '@/shared/events/schemas/events.schema';
 import { eq, desc } from 'drizzle-orm';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';

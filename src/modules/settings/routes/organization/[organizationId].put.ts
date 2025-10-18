@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { updateOrganizationSettings } from '@/modules/settings/services/settings.service';
-import { validateBody } from '@/shared/utils/validation';
+import { validateBody } from '@/shared/lib/validate';
 import { updateOrganizationSettingsSchema } from '@/shared/validations/settings';
 
 type UpdateOrganizationSettingsRequest = {
@@ -14,10 +14,10 @@ type UpdateOrganizationSettingsRequest = {
  * Update organization settings
  * PUT /api/settings/organization/:organizationId
  */
-export default async function updateOrganizationSettingsRoute(
+const updateOrganizationSettingsRoute = async (
   request: FastifyRequest<UpdateOrganizationSettingsRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   const { organizationId } = request.params;
   const validatedData = await validateBody(
     request,
@@ -38,4 +38,6 @@ export default async function updateOrganizationSettingsRoute(
   );
 
   return reply.send({ data: settings });
-}
+};
+
+export default updateOrganizationSettingsRoute;

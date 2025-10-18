@@ -18,7 +18,7 @@ import {
   type SelectSubscription,
 } from '../database/schema';
 import { eq, and } from 'drizzle-orm';
-import { db } from '@/database';
+import { db } from '@/shared/database';
 
 export interface CreateSubscriptionRequest {
   organizationId: string;

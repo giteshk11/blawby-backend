@@ -1,1 +1,1 @@
-export * from './customers.schema';
+export * from './clients.schema';

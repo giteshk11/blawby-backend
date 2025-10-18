@@ -11,10 +11,10 @@ type GetOrganizationSettingsRequest = {
  * Get organization settings
  * GET /api/settings/organization/:organizationId
  */
-export default async function getOrganizationSettingsRoute(
+const getOrganizationSettingsRoute = async (
   request: FastifyRequest<GetOrganizationSettingsRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   const { organizationId } = request.params;
 
   // Check if user has permission to access this organization
@@ -24,8 +24,6 @@ export default async function getOrganizationSettingsRoute(
 
   const settings = await getOrganizationSettings(organizationId);
   return reply.send({ data: settings });
-}
-
-export const config = {
-  
 };
+
+export default getOrganizationSettingsRoute;
