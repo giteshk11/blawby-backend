@@ -119,7 +119,9 @@ export const getEventsToRetry = async (): Promise<WebhookEvent[]> => {
     );
 };
 
-const findWebhookById = async (id: string): Promise<WebhookEvent | null> => {
+export const findWebhookById = async (
+  id: string,
+): Promise<WebhookEvent | null> => {
   const events = await db
     .select()
     .from(webhookEvents)

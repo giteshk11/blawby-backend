@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { getSettingsHistory } from '@/modules/settings/services/settings.service';
-import { z } from 'zod';
 
 type GetUserSettingsHistoryRequest = {
   query: {
@@ -12,14 +11,14 @@ type GetUserSettingsHistoryRequest = {
  * Get user settings history
  * GET /api/settings/user/history
  */
-export default async function getUserSettingsHistoryRoute(
+const getUserSettingsHistoryRoute = async (
   request: FastifyRequest<GetUserSettingsHistoryRequest>,
   reply: FastifyReply,
-) {
+): Promise<FastifyReply> => {
   const { limit = 50 } = request.query;
   const history = await getSettingsHistory('user', request.userId ?? '', limit);
 
   return reply.send({ data: history });
-}
+};
 
-export const config = {};
+export default getUserSettingsHistoryRoute;

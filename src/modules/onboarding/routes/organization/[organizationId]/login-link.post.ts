@@ -15,10 +15,7 @@ export default async function createLoginLinkRoute(
   request: FastifyRequest<CreateLoginLinkRequest>,
   reply: FastifyReply,
 ): Promise<FastifyReply> {
-  const loginLink = await createLoginLink(
-    { organizationId: request.params.organizationId },
-    request.user,
-  );
+  const loginLink = await createLoginLink(request.params.organizationId);
 
   return reply.send({ data: loginLink });
 }

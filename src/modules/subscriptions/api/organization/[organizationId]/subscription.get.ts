@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { createSubscriptionService } from '../../services/subscription.service';
+import { createSubscriptionService } from '@/modules/subscriptions/services/subscription.service';
 
 type GetOrganizationSubscriptionRequest = FastifyRequest<{
   Params: {

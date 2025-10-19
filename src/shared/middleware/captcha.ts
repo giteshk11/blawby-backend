@@ -54,7 +54,7 @@ export const verifyCaptcha = async function verifyCaptcha(
       throw new Error(`Turnstile API error: ${response.status}`);
     }
 
-    const result: TurnstileVerifyResponse = await response.json();
+    const result = (await response.json()) as TurnstileVerifyResponse;
 
     if (!result.success) {
       request.log.warn(

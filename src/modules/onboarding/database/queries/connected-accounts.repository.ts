@@ -109,3 +109,6 @@ export const stripeConnectedAccountsRepository = {
   update,
   deleteById,
 };
+
+// Alias for backward compatibility
+export const connectedAccountsRepository = stripeConnectedAccountsRepository;

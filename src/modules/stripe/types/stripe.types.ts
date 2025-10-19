@@ -1,5 +1,3 @@
-import type { Organization } from '@/types/database';
-
 // Module-specific types only - no re-exports
 export type StripeSummary = {
   id: string;

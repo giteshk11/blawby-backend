@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { verifyCaptcha } from '@/shared/middleware/captcha';
-import { paymentLinksRepository } from '../database/queries/payment-links.repository';
+import { paymentLinksRepository } from '@/modules/payments/database/queries/payment-links.repository';
 import { getStripeClient } from '@/shared/services/stripe-client.service';
 
 type UpdatePaymentLinkRequest = FastifyRequest<{
@@ -35,10 +35,9 @@ export default async function updatePaymentLink(
 
   // 3. Update Stripe payment intent
   const stripe = getStripeClient();
-  const updatedIntent = await stripe.paymentIntents.update(
-    paymentIntentId,
-    { amount },
-  );
+  const updatedIntent = await stripe.paymentIntents.update(paymentIntentId, {
+    amount,
+  });
 
   // 4. Update database
   await paymentLinksRepository.update(paymentLink.id, { amount });

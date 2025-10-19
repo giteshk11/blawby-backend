@@ -303,3 +303,39 @@ export const isAccountActive = (account: StripeConnectedAccount): boolean => {
 
   return true;
 };
+
+/**
+ * Create login link for Stripe dashboard
+ */
+export const createLoginLink = async (
+  organizationId: string,
+): Promise<{ url: string }> => {
+  const account = await findByOrganization(organizationId);
+
+  if (!account) {
+    throw new Error('No Stripe account found for organization');
+  }
+
+  const stripe = getStripeClient();
+  const loginLink = await stripe.accounts.createLoginLink(
+    account.stripeAccountId,
+  );
+
+  return { url: loginLink.url };
+};
+
+/**
+ * Create payments session for organization
+ */
+export const createPaymentsSessionForOrganization = async (
+  fastify: FastifyInstance,
+  organizationId: string,
+): Promise<CreateSessionResponse> => {
+  const account = await getAccount(fastify, organizationId);
+
+  if (!account) {
+    throw new Error('No Stripe account found for organization');
+  }
+
+  return createPaymentsSession(fastify, account.accountId);
+};

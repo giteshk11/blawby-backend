@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { createPaymentsSessionBilling } from '@/modules/onboarding/services/connected-accounts.service';
+import { createPaymentsSessionForOrganization } from '@/modules/onboarding/services/connected-accounts.service';
 
 type CreatePaymentsSessionRequest = {
   Params: {
@@ -15,10 +15,9 @@ export default async function createPaymentsSessionRoute(
   request: FastifyRequest<CreatePaymentsSessionRequest>,
   reply: FastifyReply,
 ): Promise<FastifyReply> {
-  const session = await createPaymentsSessionBilling(
-    { organizationId: request.params.organizationId },
-    request.user,
+  const session = await createPaymentsSessionForOrganization(
     request.server,
+    request.params.organizationId,
   );
 
   return reply.send({ data: session });
