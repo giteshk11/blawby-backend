@@ -1,6 +1,6 @@
+import { EventType } from '@/shared/events/enums/event-types';
 import { subscribeToEvent } from '@/shared/events/event-consumer';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
-import { EventType } from '@/shared/events/enums/event-types';
 
 // Mock email service - replace with actual email service
 const sendEmail = async (params: {

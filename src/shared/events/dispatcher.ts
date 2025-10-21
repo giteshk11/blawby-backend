@@ -6,12 +6,12 @@
  */
 
 import { EventType } from '@/shared/events/enums/event-types';
-import type { BaseEvent } from '@/shared/events/schemas/events.schema';
 import {
   publishPracticeEvent,
   publishUserEvent,
   publishSystemEvent,
 } from '@/shared/events/event-publisher';
+import type { BaseEvent } from '@/shared/events/schemas/events.schema';
 
 type EventParams = {
   eventType: EventType;

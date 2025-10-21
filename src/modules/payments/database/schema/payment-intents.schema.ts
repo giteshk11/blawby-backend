@@ -53,7 +53,7 @@ export const paymentIntents = pgTable(
     customerName: text('customer_name'),
 
     // Metadata from Stripe
-    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    metadata: jsonb('metadata'),
 
     // Receipt
     receiptEmail: text('receipt_email'),

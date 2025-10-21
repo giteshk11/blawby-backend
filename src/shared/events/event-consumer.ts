@@ -1,7 +1,8 @@
 import { EventEmitter } from 'events';
-import { db } from '@/shared/database';
-import { events } from '@/shared/events/schemas/events.schema';
 import { eq, desc } from 'drizzle-orm';
+import { db } from '@/shared/database';
+import { EventType } from '@/shared/events/enums/event-types';
+import { events } from '@/shared/events/schemas/events.schema';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
 
 // Global event bus instance
@@ -18,26 +19,63 @@ export const subscribeToEvent = (
   eventBus.on(eventType, async (event) => {
     try {
       await handler(event);
-      await markEventAsProcessed(event.eventId);
+      // Mark as processed asynchronously (don't await)
+      markEventAsProcessed(event.eventId).catch((error) => {
+        console.error(`Failed to mark event ${event.eventId} as processed:`, error);
+      });
     } catch (error) {
-      await handleEventFailure(event, error);
+      console.error(`Event handler failed for ${eventType}:`, error);
+      // Mark failure asynchronously (don't await)
+      handleEventFailure(event, error).catch((err) => {
+        console.error(`Failed to handle event failure for ${event.eventId}:`, err);
+      });
     }
   });
 };
 
-// Subscribe to all events
+// Subscribe to all events by listening to each event type
 export const subscribeToAllEvents = (
   handler: (event: BaseEvent) => Promise<void>,
 ): void => {
-  eventBus.on('*', async (event) => {
-    try {
-      await handler(event);
-      await markEventAsProcessed(event.eventId);
-    } catch (error) {
-      await handleEventFailure(event, error);
-    }
+  // Listen to all event types
+  Object.values(EventType).forEach((eventType) => {
+    eventBus.on(eventType, async (event) => {
+      try {
+        await handler(event);
+        // Mark as processed asynchronously (don't await)
+        markEventAsProcessed(event.eventId).catch((error) => {
+          console.error(`Failed to mark event ${event.eventId} as processed:`, error);
+        });
+      } catch (error) {
+        console.error(`Event handler failed for ${eventType}:`, error);
+        // Mark failure asynchronously (don't await)
+        handleEventFailure(event, error).catch((err) => {
+          console.error(`Failed to handle event failure for ${event.eventId}:`, err);
+        });
+      }
+    });
   });
 };
+
+// Auto-save all events to database
+subscribeToAllEvents(async (event) => {
+  try {
+    await db.insert(events).values({
+      eventId: event.eventId,
+      eventType: event.eventType,
+      eventVersion: event.eventVersion,
+      actorId: event.actorId,
+      actorType: event.actorType,
+      organizationId: event.organizationId,
+      payload: event.payload,
+      metadata: event.metadata,
+      processed: false,
+      retryCount: 0,
+    });
+  } catch (error) {
+    console.error(`Failed to save event ${event.eventId} to database:`, error);
+  }
+});
 
 // Remove event subscription
 export const unsubscribeFromEvent = (
@@ -70,7 +108,7 @@ const handleEventFailure = async (
   await db
     .update(events)
     .set({
-      retryCount: event.retryCount + 1,
+      retryCount: (event as { retryCount: number }).retryCount + 1,
       lastError: errorMessage,
     })
     .where(eq(events.eventId, event.eventId));
@@ -91,6 +129,9 @@ export const getUnprocessedEvents = async (
     ...event,
     timestamp: event.createdAt,
     actorId: event.actorId ?? undefined,
+    actorType: event.actorType ?? undefined,
+    organizationId: event.organizationId ?? undefined,
+    payload: event.payload as Record<string, unknown>,
   }));
 };
 
@@ -103,7 +144,7 @@ export const getEventsByUser = async (
   const results = await db
     .select()
     .from(events)
-    .where(eq(events.userId, userId))
+    .where(eq(events.actorId, userId))
     .limit(limit)
     .offset(offset)
     .orderBy(desc(events.createdAt));
@@ -112,6 +153,9 @@ export const getEventsByUser = async (
     ...event,
     timestamp: event.createdAt,
     actorId: event.actorId ?? undefined,
+    actorType: event.actorType ?? undefined,
+    organizationId: event.organizationId ?? undefined,
+    payload: event.payload as Record<string, unknown>,
   }));
 };
 
@@ -133,5 +177,8 @@ export const getEventsByOrganization = async (
     ...event,
     timestamp: event.createdAt,
     actorId: event.actorId ?? undefined,
+    actorType: event.actorType ?? undefined,
+    organizationId: event.organizationId ?? undefined,
+    payload: event.payload as Record<string, unknown>,
   }));
 };

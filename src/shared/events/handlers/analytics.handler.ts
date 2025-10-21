@@ -1,9 +1,9 @@
+import { EventType } from '@/shared/events/enums/event-types';
 import {
   subscribeToAllEvents,
   subscribeToEvent,
 } from '@/shared/events/event-consumer';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
-import { EventType } from '@/shared/events/enums/event-types';
 
 // Mock analytics service - replace with actual analytics service
 const trackEvent = async (params: {

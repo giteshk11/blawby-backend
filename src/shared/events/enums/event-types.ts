@@ -10,6 +10,11 @@
  */
 
 export enum EventType {
+  // Stripe account events
+  STRIPE_CONNECTED_ACCOUNT_CREATED = 'stripe.connected_account_created',
+  STRIPE_CONNECTED_ACCOUNT_UPDATED = 'stripe.connected_account_updated',
+  STRIPE_CONNECTED_ACCOUNT_DELETED = 'stripe.connected_account_deleted',
+
   // Authentication events
   AUTH_USER_SIGNED_UP = 'auth.user_signed_up',
   AUTH_EMAIL_VERIFIED = 'auth.email_verified',
@@ -69,8 +74,17 @@ export enum EventType {
   // Payment events
   PAYMENT_SESSION_CREATED = 'payment.session_created',
   PAYMENT_RECEIVED = 'payment.received',
+  PAYMENT_SUCCEEDED = 'payment.succeeded',
   PAYMENT_FAILED = 'payment.failed',
+  PAYMENT_CANCELED = 'payment.canceled',
   PAYMENT_REFUNDED = 'payment.refunded',
+
+  // Subscription events
+  SUBSCRIPTION_CREATED = 'subscription.created',
+  SUBSCRIPTION_UPDATED = 'subscription.updated',
+  SUBSCRIPTION_CANCELLED = 'subscription.cancelled',
+  SUBSCRIPTION_RENEWED = 'subscription.renewed',
+  SUBSCRIPTION_PAYMENT_FAILED = 'subscription.payment_failed',
 
   // System events
   SYSTEM_HEALTH_CHECK_PERFORMED = 'system.health_check_performed',
@@ -78,7 +92,7 @@ export enum EventType {
   SYSTEM_PERFORMANCE_DEGRADED = 'system.performance_degraded',
   SESSION_CREATED = 'session.created',
   SESSION_EXPIRED = 'session.expired',
-  SESSION_INVALIDATED = 'session.invalidated',
+  SESSION_INVALIDATED = 'session.invalidated'
 }
 
 // Helper type for event type values
@@ -90,9 +104,7 @@ export const isValidEventType = (value: string): value is EventTypeValue => {
 };
 
 export const getEventTypeByDomain = (domain: string): EventType[] => {
-  return Object.values(EventType).filter((type) =>
-    type.startsWith(`${domain}.`),
-  );
+  return Object.values(EventType).filter((type) => type.startsWith(`${domain}.`));
 };
 
 // Event type groups for easier filtering

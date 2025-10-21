@@ -9,8 +9,9 @@ import {
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { organizations } from '@/schema';
+
 import { stripeConnectedAccounts } from '@/modules/onboarding/schemas/onboarding.schema';
+import { organizations } from '@/schema';
 
 export const paymentLinks = pgTable(
   'payment_links',
@@ -54,7 +55,7 @@ export const paymentLinks = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
+  table => [
     index('payment_links_org_idx').on(table.organizationId),
     index('payment_links_org_status_idx').on(table.organizationId, table.status),
     index('payment_links_stripe_intent_idx').on(table.stripePaymentIntentId),

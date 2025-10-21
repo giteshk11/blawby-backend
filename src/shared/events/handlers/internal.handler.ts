@@ -1,6 +1,6 @@
+import { EventType } from '@/shared/events/enums/event-types';
 import { subscribeToEvent } from '@/shared/events/event-consumer';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
-import { EventType } from '@/shared/events/enums/event-types';
 
 // Mock Slack service - replace with actual Slack integration
 const notifySlack = async (params: {
@@ -46,7 +46,7 @@ export const registerInternalHandlers = (): void => {
       text: `🏢 New organization created: ${event.payload.organizationName}`,
       fields: {
         'Organization ID': event.organizationId || 'unknown',
-        Owner: event.actorId || 'unknown',
+        'Owner': event.actorId || 'unknown',
         'Practice Type': event.payload.practiceType || 'unknown',
       },
     });
@@ -71,7 +71,7 @@ export const registerInternalHandlers = (): void => {
     async (event: BaseEvent) => {
       await notifySlack({
         channel: '#alerts',
-        text: `🚨 System error occurred`,
+        text: '🚨 System error occurred',
         fields: {
           Error: event.payload.error || 'Unknown error',
           Component: event.payload.component || 'unknown',
@@ -95,9 +95,9 @@ export const registerInternalHandlers = (): void => {
           channel: '#high-value-payments',
           text: `💰 High-value payment received: $${amountInDollars.toFixed(2)}`,
           fields: {
-            Organization: event.organizationId || 'unknown',
-            Customer: event.payload.customerEmail || 'unknown',
-            Currency: event.payload.currency || 'usd',
+            'Organization': event.organizationId || 'unknown',
+            'Customer': event.payload.customerEmail || 'unknown',
+            'Currency': event.payload.currency || 'usd',
             'Payment ID': event.payload.paymentIntentId || 'unknown',
           },
         });

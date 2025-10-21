@@ -139,31 +139,31 @@ export const categorizeError = (error: unknown): string => {
 
   // Authentication errors
   if (
-    errorName.includes('auth') ||
-    errorName.includes('unauthorized') ||
-    errorMessage.includes('authentication') ||
-    errorMessage.includes('unauthorized')
+    errorName.includes('auth')
+    || errorName.includes('unauthorized')
+    || errorMessage.includes('authentication')
+    || errorMessage.includes('unauthorized')
   ) {
     return 'authentication';
   }
 
   // Validation errors
   if (
-    errorName.includes('validation') ||
-    errorName.includes('zod') ||
-    errorMessage.includes('validation')
+    errorName.includes('validation')
+    || errorName.includes('zod')
+    || errorMessage.includes('validation')
   ) {
     return 'validation';
   }
 
   // Database errors
   if (
-    errorName.includes('database') ||
-    errorName.includes('postgres') ||
-    errorName.includes('drizzle') ||
-    errorMessage.includes('relation') ||
-    errorMessage.includes('table') ||
-    errorMessage.includes('column')
+    errorName.includes('database')
+    || errorName.includes('postgres')
+    || errorName.includes('drizzle')
+    || errorMessage.includes('relation')
+    || errorMessage.includes('table')
+    || errorMessage.includes('column')
   ) {
     return 'database';
   }

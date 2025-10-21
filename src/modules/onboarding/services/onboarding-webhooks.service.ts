@@ -7,19 +7,20 @@
  */
 
 import Stripe from 'stripe';
-import { getStripeClient } from '@/shared/services/stripe-client.service';
+
+import { handleAccountUpdated } from '@/modules/onboarding/handlers/account-updated.handler';
+import { handleCapabilityUpdated } from '@/modules/onboarding/handlers/capability-updated.handler';
+import { handleExternalAccountCreated } from '@/modules/onboarding/handlers/external-account-created.handler';
+import { handleExternalAccountDeleted } from '@/modules/onboarding/handlers/external-account-deleted.handler';
+import { handleExternalAccountUpdated } from '@/modules/onboarding/handlers/external-account-updated.handler';
+import { getEventsToRetry } from '@/modules/onboarding/repositories/onboarding.repository';
 import {
   existsByStripeEventId,
   createWebhookEvent,
   markWebhookProcessed,
   markWebhookFailed,
 } from '@/shared/repositories/stripe.webhook-events.repository';
-import { getEventsToRetry } from '@/modules/onboarding/repositories/onboarding.repository';
-import { handleAccountUpdated } from '@/modules/onboarding/handlers/account-updated.handler';
-import { handleCapabilityUpdated } from '@/modules/onboarding/handlers/capability-updated.handler';
-import { handleExternalAccountCreated } from '@/modules/onboarding/handlers/external-account-created.handler';
-import { handleExternalAccountUpdated } from '@/modules/onboarding/handlers/external-account-updated.handler';
-import { handleExternalAccountDeleted } from '@/modules/onboarding/handlers/external-account-deleted.handler';
+import { getStripeClient } from '@/shared/services/stripe-client.service';
 
 export const verifyAndStore = async (
   rawBody: string | Buffer,
@@ -108,8 +109,8 @@ export const processEvent = async (eventId: string): Promise<void> => {
     await markWebhookProcessed(webhookEvent.id);
     console.info(`Successfully processed webhook event: ${eventId}`);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage
+      = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
 
     // Mark as failed (increments retry count, sets next retry time)
