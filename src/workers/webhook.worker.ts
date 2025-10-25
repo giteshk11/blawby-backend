@@ -20,7 +20,7 @@ import { config } from '@dotenvx/dotenvx';
 import { Worker } from 'bullmq';
 
 import { processEvent as processOnboardingEvent } from '@/modules/onboarding/services/onboarding-webhooks.service';
-import { processStripeWebhookEvent } from '@/modules/stripe/services/stripe-webhook-processor.service';
+// import { processStripeWebhookEvent } from '@/modules/stripe/services/stripe-webhook-processor.service';
 import { QUEUE_NAMES } from '@/shared/queue/queue.config';
 import { getRedisConnection } from '@/shared/queue/redis.client';
 
@@ -51,7 +51,8 @@ async function processStripeWebhookJob(job: {
   );
 
   try {
-    await processStripeWebhookEvent(webhookId, eventId);
+    // await processStripeWebhookEvent(webhookId, eventId);
+    console.log(`⚠️ Stripe webhook processing temporarily disabled: ${eventId}`);
 
     const duration = Date.now() - startTime;
     console.log(

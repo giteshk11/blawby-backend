@@ -42,7 +42,7 @@ export const paymentLinks = pgTable(
       email: string;
       name: string;
       on_behalf_of?: string;
-    }>(),
+    } | null>(),
 
     // Security
     customerIp: text('customer_ip'),
@@ -55,7 +55,7 @@ export const paymentLinks = pgTable(
       .defaultNow()
       .notNull(),
   },
-  table => [
+  (table) => [
     index('payment_links_org_idx').on(table.organizationId),
     index('payment_links_org_status_idx').on(table.organizationId, table.status),
     index('payment_links_stripe_intent_idx').on(table.stripePaymentIntentId),

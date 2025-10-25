@@ -16,7 +16,7 @@ import type {
 } from '@/modules/onboarding/schemas/onboarding.schema';
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishSimpleEvent } from '@/shared/events/event-publisher';
-import { getStripeClient } from '@/shared/services/stripe-client.service';
+import { stripe } from '@/shared/utils/stripe-client';
 
 // 1. Find existing account (single responsibility)
 export const findAccountByOrganization = async (
@@ -30,7 +30,6 @@ export const createStripeAccount = async (
   organizationId: string,
   email: string,
 ): Promise<StripeConnectedAccount> => {
-  const stripe = getStripeClient();
   const stripeAccount = await stripe.accounts.create({
     country: 'US',
     email,
@@ -84,7 +83,6 @@ export const createOnboardingSessionForAccount = async (
   account: StripeConnectedAccount,
 ): Promise<CreateSessionResponse> => {
   // Create session with Stripe (no database storage needed)
-  const stripe = getStripeClient();
   const session = await stripe.accountSessions.create({
     account: account.stripe_account_id,
     components: {
@@ -148,7 +146,6 @@ export const createPaymentsSession = async (
   stripeAccountId: string,
 ): Promise<CreateSessionResponse> => {
   // Create session with Stripe (no database storage needed)
-  const stripe = getStripeClient();
   const session = await stripe.accountSessions.create({
     account: stripeAccountId,
     components: {

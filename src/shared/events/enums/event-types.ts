@@ -15,6 +15,12 @@ export enum EventType {
   STRIPE_CONNECTED_ACCOUNT_UPDATED = 'stripe.connected_account_updated',
   STRIPE_CONNECTED_ACCOUNT_DELETED = 'stripe.connected_account_deleted',
 
+  // Stripe customer events
+  STRIPE_CUSTOMER_CREATED = 'stripe.customer.created',
+  STRIPE_CUSTOMER_UPDATED = 'stripe.customer.updated',
+  STRIPE_CUSTOMER_DELETED = 'stripe.customer.deleted',
+  STRIPE_CUSTOMER_SYNC_FAILED = 'stripe.customer.sync_failed',
+
   // Authentication events
   AUTH_USER_SIGNED_UP = 'auth.user_signed_up',
   AUTH_EMAIL_VERIFIED = 'auth.email_verified',
@@ -79,6 +85,12 @@ export enum EventType {
   PAYMENT_CANCELED = 'payment.canceled',
   PAYMENT_REFUNDED = 'payment.refunded',
 
+  // Intake payment events
+  INTAKE_PAYMENT_CREATED = 'intake_payment.created',
+  INTAKE_PAYMENT_SUCCEEDED = 'intake_payment.succeeded',
+  INTAKE_PAYMENT_FAILED = 'intake_payment.failed',
+  INTAKE_PAYMENT_CANCELED = 'intake_payment.canceled',
+
   // Subscription events
   SUBSCRIPTION_CREATED = 'subscription.created',
   SUBSCRIPTION_UPDATED = 'subscription.updated',
@@ -115,6 +127,8 @@ export const EVENT_DOMAINS = {
   SETTINGS: 'settings',
   ONBOARDING: 'onboarding',
   PAYMENT: 'payment',
+  INTAKE_PAYMENT: 'intake_payment',
+  STRIPE_CUSTOMER: 'stripe_customer',
   SYSTEM: 'system',
   SESSION: 'session',
 } as const;

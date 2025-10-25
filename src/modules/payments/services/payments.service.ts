@@ -14,7 +14,7 @@ import type {
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishSimpleEvent } from '@/shared/events/event-publisher';
 import { calculateFees } from '@/shared/services/fees.service';
-import { getStripeClient } from '@/shared/services/stripe-client.service';
+import { stripe } from '@/shared/utils/stripe-client';
 
 export interface CreatePaymentIntentRequest {
   organizationId: string;
@@ -105,7 +105,7 @@ export const createPaymentsService = function createPaymentsService(
         }
 
         // 4. Create payment intent on Stripe (direct charges)
-        const stripePaymentIntent = await getStripeClient().paymentIntents.create(
+        const stripePaymentIntent = await stripe.paymentIntents.create(
           {
             amount: request.amount,
             currency: request.currency || 'usd',
@@ -205,7 +205,7 @@ export const createPaymentsService = function createPaymentsService(
         }
 
         // 3. Confirm payment intent on Stripe
-        const stripePaymentIntent = await getStripeClient().paymentIntents.confirm(
+        const stripePaymentIntent = await stripe.paymentIntents.confirm(
           paymentIntent.stripePaymentIntentId,
           {
             payment_method: request.paymentMethodId,

@@ -2,6 +2,7 @@ import type { MiddlewareHandler } from 'hono';
 import type { z } from 'zod';
 import { logError } from '@/shared/middleware/logger';
 import type { Variables } from '@/shared/types/hono';
+import { response } from '@/shared/utils/responseUtils';
 
 /**
  * Custom validation error type
@@ -41,18 +42,15 @@ export const validateParams = <T extends z.ZodType>(
         stack: JSON.stringify(validationResult.error.issues),
       });
 
-      // Throw custom error to be caught by global handler
-      const validationError = new Error(errorMessage) as ValidationError;
-      validationError.status = 400;
-      validationError.details = {
-        error: errorMessage,
-        message: 'Please check your route parameters',
+
+      // Return the proper response directly instead of throwing
+      return response.badRequest(c, errorMessage, {
         details: validationResult.error.issues.map((issue) => ({
           field: issue.path.join('.'),
           message: issue.message,
+          code: issue.code,
         })),
-      };
-      throw validationError;
+      });
     }
 
     // Store validated params in context for use in route handler
@@ -85,19 +83,23 @@ export const validateJson = <T extends z.ZodTypeAny>(
           stack: JSON.stringify(validationResult.error.issues),
         });
 
-        // Throw custom error to be caught by global handler
-        const validationError = new Error(errorMessage) as ValidationError;
-        validationError.status = 400;
-        validationError.details = {
+        // Log detailed validation errors for debugging
+        console.log('🔍 VALIDATION ERRORS:', validationResult.error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code,
+        })));
+
+        // Return the proper response directly instead of throwing
+        return c.json({
           error: errorMessage,
           message: 'Please check your input data',
           details: validationResult.error.issues.map((issue) => ({
             field: issue.path.join('.'),
             message: issue.message,
+            code: issue.code,
           })),
-        };
-        console.log('🚨 THROWING VALIDATION ERROR:', validationError);
-        throw validationError;
+        }, 400);
       }
 
       // Store validated body in context for use in route handler
@@ -160,18 +162,23 @@ export const validateParamsAndJson = <
         stack: JSON.stringify(paramValidation.error.issues),
       });
 
-      // Throw custom error to be caught by global handler
-      const validationError = new Error(paramErrorMessage) as ValidationError;
-      validationError.status = 400;
-      validationError.details = {
+      // Log detailed validation errors for debugging
+      console.log('🔍 PARAM VALIDATION ERRORS (validateParamsAndJson):', paramValidation.error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+        code: issue.code,
+      })));
+
+      // Return the proper response directly instead of throwing
+      return c.json({
         error: paramErrorMessage,
         message: 'Please check your route parameters',
         details: paramValidation.error.issues.map((issue) => ({
           field: issue.path.join('.'),
           message: issue.message,
+          code: issue.code,
         })),
-      };
-      throw validationError;
+      }, 400);
     }
 
     // Validate JSON body
@@ -201,7 +208,12 @@ export const validateParamsAndJson = <
             message: issue.message,
           })),
         };
-        console.log('🚨 THROWING VALIDATION ERROR (validateParamsAndJson):', validationError);
+        // Log detailed validation errors for debugging
+        console.log('🔍 BODY VALIDATION ERRORS (validateParamsAndJson):', bodyValidation.error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code,
+        })));
 
         // Return the proper response directly instead of throwing
         return c.json({
@@ -210,6 +222,7 @@ export const validateParamsAndJson = <
           details: bodyValidation.error.issues.map((issue) => ({
             field: issue.path.join('.'),
             message: issue.message,
+            code: issue.code,
           })),
         }, 400);
       }

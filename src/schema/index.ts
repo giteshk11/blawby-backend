@@ -8,16 +8,16 @@
  * 1. Create a new *.schema.ts file in your module
  * 2. Run: pnpm run schemas:sync
  *
- * Last updated: 2025-10-21T15:54:05.910Z
+ * Last updated: 2025-10-25T06:18:17.407Z
  */
 
 // Better Auth core schemas (users, sessions, organizations, etc.)
 export * from './better-auth-schema';
 
 // Auto-discovered schemas from modules and shared directories
+export * from './../modules/intake-payments/database/schema/intake-payments.schema';
 export * from './../modules/onboarding/schemas/onboarding.schema';
-export * from './../modules/payments/database/schema/payment-intents.schema';
-export * from './../modules/payments/database/schema/payment-links.schema';
 export * from './../modules/practice/database/schema/practice.schema';
+export * from './../modules/user-details/schema/user-details.schema';
 export * from './../shared/events/schemas/events.schema';
 export * from './../shared/schemas/stripe.webhook-events.schema';

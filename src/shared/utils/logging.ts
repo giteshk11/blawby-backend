@@ -28,7 +28,7 @@ const SENSITIVE_BODY_FIELDS = [
 export const sanitizeHeaders = <T extends Record<string, unknown>>(
   headers: T,
 ): T => {
-  const sanitized = {} as T;
+  const sanitized = {} as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(headers)) {
     const lowerKey = key.toLowerCase();
@@ -45,7 +45,7 @@ export const sanitizeHeaders = <T extends Record<string, unknown>>(
     }
   }
 
-  return sanitized;
+  return sanitized as T;
 };
 
 /**
@@ -89,7 +89,7 @@ export const sanitizeError = (error: unknown): Record<string, unknown> => {
       stack: error.stack,
       cause: (error as Error & { cause?: unknown }).cause,
       // Include any custom properties
-      ...(error as Record<string, unknown>),
+      ...(error as unknown as Record<string, unknown>),
     };
   }
 

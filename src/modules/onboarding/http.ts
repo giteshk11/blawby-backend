@@ -18,7 +18,7 @@ const onboardingApp = new Hono<AppContext>();
  * Get onboarding status for organization
  */
 onboardingApp.get('/organization/:organizationId/status', validateParams(organizationIdParamSchema, 'Invalid Organization ID'), async (c) => {
-  const user = c.get('user');
+  const user = c.get('user')!;
   const validatedParams = c.get('validatedParams');
 
   const status = await getOnboardingStatus(validatedParams.organizationId,
@@ -37,7 +37,7 @@ onboardingApp.get('/organization/:organizationId/status', validateParams(organiz
  * Create connected account for organization (includes session creation)
  */
 onboardingApp.post('/connected-accounts', validateJson(createConnectedAccountSchema, 'Invalid Connected Account Data'), async (c) => {
-  const user = c.get('user');
+  const user = c.get('user')!; // Auth middleware guarantees user is non-null
   const validatedBody = c.get('validatedBody');
 
   const details = await createConnectedAccount({

@@ -20,7 +20,7 @@ import {
   markWebhookProcessed,
   markWebhookFailed,
 } from '@/shared/repositories/stripe.webhook-events.repository';
-import { getStripeClient } from '@/shared/services/stripe-client.service';
+import { stripe } from '@/shared/utils/stripe-client';
 
 export const verifyAndStore = async (
   rawBody: string | Buffer,
@@ -41,7 +41,7 @@ export const verifyAndStore = async (
   // Verify signature using Stripe SDK
   let event: Stripe.Event;
   try {
-    event = getStripeClient().webhooks.constructEvent(
+    event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
       webhookSecret,

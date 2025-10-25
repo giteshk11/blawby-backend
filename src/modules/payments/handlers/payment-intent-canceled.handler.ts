@@ -9,6 +9,8 @@ import { paymentIntentsRepository } from '@/modules/payments/database/queries/pa
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishSimpleEvent } from '@/shared/events/event-publisher';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
+import { handleIntakePaymentCanceled } from '@/modules/intake-payments/handlers/canceled.handler';
+import type Stripe from 'stripe';
 
 export const handlePaymentIntentCanceled
   = async function handlePaymentIntentCanceled(
@@ -37,6 +39,9 @@ export const handlePaymentIntentCanceled
           canceledAt: new Date().toISOString(),
         } as Record<string, unknown>,
       });
+
+      // Check if this is an intake payment and handle it
+      await handleIntakePaymentCanceled(paymentIntentData as Stripe.PaymentIntent);
 
       // Publish simple payment canceled event
       void publishSimpleEvent(EventType.PAYMENT_CANCELED, 'system', event.organizationId || 'unknown', {

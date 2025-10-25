@@ -1,8 +1,6 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
 
-import { responseErrors } from '@/shared/middleware';
-
 /**
  * Validates route parameters using Zod schema with @hono/zod-validator
  * @param context - Hono context
@@ -20,9 +18,9 @@ const validateParams = <T extends z.ZodSchema>(
     return validatedParams;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw responseErrors.badRequest('Invalid parameters');
+      throw new Error('Invalid parameters');
     }
-    throw responseErrors.badRequest('Invalid parameters');
+    throw new Error('Invalid parameters');
   }
 };
 
@@ -43,9 +41,9 @@ const validateQuery = <T extends z.ZodSchema>(
     return validatedQuery;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw responseErrors.badRequest('Invalid query parameters');
+      throw new Error('Invalid query parameters');
     }
-    throw responseErrors.badRequest('Invalid query parameters');
+    throw new Error('Invalid query parameters');
   }
 };
 
@@ -66,9 +64,9 @@ const validateBody = async <T extends z.ZodSchema>(
     return validatedBody;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw responseErrors.badRequest('Invalid request body');
+      throw new Error('Invalid request body');
     }
-    throw responseErrors.badRequest('Invalid request body');
+    throw new Error('Invalid request body');
   }
 };
 
@@ -89,9 +87,9 @@ const validateHeaders = <T extends z.ZodSchema>(
     return validatedHeaders;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw responseErrors.badRequest('Invalid headers');
+      throw new Error('Invalid headers');
     }
-    throw responseErrors.badRequest('Invalid headers');
+    throw new Error('Invalid headers');
   }
 };
 

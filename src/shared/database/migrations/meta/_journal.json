@@ -8,6 +8,20 @@
       "when": 1761032977915,
       "tag": "0000_loose_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1761312035970,
+      "tag": "0001_dusty_vampiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761331813749,
+      "tag": "0002_perpetual_dreadnoughts",
+      "breakpoints": true
     }
   ]
 }

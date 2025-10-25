@@ -49,7 +49,6 @@ export const listOrganizations = async (
 ): Promise<Organization[]> => {
   console.log('listOrganizations called with user:', user.id);
 
-  const betterAuth = createBetterAuthInstance(db);
 
   try {
     // Try to get organizations using the session
@@ -73,7 +72,6 @@ export const getFullOrganization = async (
   user: User,
   requestHeaders: Record<string, string>,
 ): Promise<ActiveOrganization> => {
-  const betterAuth = createBetterAuthInstance(db);
   const result = await betterAuth.api.getFullOrganization({
     query: { organizationId },
     headers: requestHeaders,
@@ -87,7 +85,6 @@ export const updateOrganization = async (
   user: User,
   requestHeaders: Record<string, string>,
 ): Promise<Organization | null> => {
-  const betterAuth = createBetterAuthInstance(db);
   const result = await betterAuth.api.updateOrganization({
     body: {
       organizationId,

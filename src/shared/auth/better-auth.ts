@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { bearer, organization, multiSession } from 'better-auth/plugins';
+import { bearer, organization, jwt } from 'better-auth/plugins';
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
@@ -31,7 +31,7 @@ const betterAuthInstance = (
     }),
 
     // Plugins
-    plugins: [bearer(), organization(), multiSession({ maximumSessions: 1 })],
+    plugins: [bearer(), jwt(), organization()],
 
     // Base path for auth routes
     basePath: '/api/auth',
@@ -46,7 +46,7 @@ const betterAuthInstance = (
             name: string;
             [key: string]: unknown;
           }) => {
-            await publishSimpleEvent(EventType.AUTH_USER_SIGNED_UP, userData.id, undefined, {
+            void publishSimpleEvent(EventType.AUTH_USER_SIGNED_UP, userData.id, undefined, {
               user_id: userData.id,
               email: userData.email,
               name: userData.name,
@@ -151,7 +151,7 @@ const betterAuthInstance = (
       expiresIn: 60 * 60 * 24, // 24 hours
       updateAge: 60 * 60, // 1 hour
       freshAge: 60 * 60 * 24, // 24 hours
-      strategy: 'jwt',
+      strategy: 'bearer',
     },
 
     // Email & Password settings
@@ -182,7 +182,7 @@ const betterAuthInstance = (
     // Advanced settings
     advanced: {
       database: { generateId: () => crypto.randomUUID() },
-      useSecureCookies: process.env.NODE_ENV === 'production',
+      useSecureCookies: false, // Disable cookies for bearer token strategy
     },
 
     // Trusted origins

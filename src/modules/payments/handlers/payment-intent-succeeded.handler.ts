@@ -10,6 +10,8 @@ import { connectedAccountsRepository } from '@/modules/onboarding/database/queri
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishSimpleEvent } from '@/shared/events/event-publisher';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
+import { handleIntakePaymentSucceeded } from '@/modules/intake-payments/handlers/succeeded.handler';
+import type Stripe from 'stripe';
 
 export const handlePaymentIntentSucceeded
   = async function handlePaymentIntentSucceeded(
@@ -76,7 +78,10 @@ export const handlePaymentIntentSucceeded
         succeeded_at: new Date().toISOString(),
       });
 
-      // 6. Send receipt if email provided
+      // 6. Check if this is an intake payment and handle it
+      await handleIntakePaymentSucceeded(paymentIntentData as Stripe.PaymentIntent);
+
+      // 7. Send receipt if email provided
       if (paymentIntent.receiptEmail && charge?.receipt_url) {
         // TODO: Implement receipt email sending
         console.info(`Receipt sent to: ${paymentIntent.receiptEmail}`);

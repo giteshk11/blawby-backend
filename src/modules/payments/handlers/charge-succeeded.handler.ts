@@ -1,11 +1,10 @@
 import type Stripe from 'stripe';
-
 import { paymentLinksRepository } from '../database/queries/payment-links.repository';
 import { sendPaymentLinkReceipts } from '../services/payment-link-receipts.service';
 import { EventType } from '@/shared/events/enums/event-types';
 import { publishSimpleEvent } from '@/shared/events/event-publisher';
 import type { BaseEvent } from '@/shared/events/schemas/events.schema';
-import { getStripeClient } from '@/shared/services/stripe-client.service';
+import { stripe } from '@/shared/utils/stripe-client';
 
 export const handleChargeSucceeded = async (
   event: BaseEvent,
@@ -35,7 +34,6 @@ export const handleChargeSucceeded = async (
   }
 
   // Calculate application fee from actual Stripe fees
-  const stripe = getStripeClient();
   const balanceTransaction = await stripe.balanceTransactions.retrieve(
     charge.balance_transaction as string,
   );

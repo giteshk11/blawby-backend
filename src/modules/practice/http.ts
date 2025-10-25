@@ -20,7 +20,7 @@ const practiceApp = new Hono<AppContext>();
 
 // GET /api/practice/list
 practiceApp.get('/list', async (c) => {
-  const user = c.get('user');
+  const user = c.get('user')!; // Auth middleware guarantees user is non-null
   const practices = await listPractices(user, c.req.header() as Record<string, string>);
   return response.ok(c, { practices });
 });
@@ -30,7 +30,7 @@ practiceApp.get('/list', async (c) => {
 practiceApp.post('/',
   validateJson(createPracticeSchema, 'Invalid Practice Data'),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get('user')!; // Auth middleware guarantees user is non-null
     const validatedBody = c.get('validatedBody');
 
     const practice = await createPracticeService({
@@ -45,7 +45,7 @@ practiceApp.post('/',
 practiceApp.get('/:uuid',
   validateParams(practiceIdParamSchema, 'Invalid Practice uuid'),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get('user')!; // Auth middleware guarantees user is non-null
     const validatedParams = c.get('validatedParams');
 
     const practice = await getPracticeById(validatedParams.uuid,
@@ -61,7 +61,7 @@ practiceApp.put('/:uuid', validateParamsAndJson(
   'Invalid Practice ID',
   'Invalid Practice Data',
 ), async (c) => {
-  const user = c.get('user');
+  const user = c.get('user')!; // Auth middleware guarantees user is non-null
   const validatedParams = c.get('validatedParams');
   const validatedBody = c.get('validatedBody');
 
@@ -78,7 +78,7 @@ practiceApp.put('/:uuid', validateParamsAndJson(
 practiceApp.delete('/:uuid',
   validateParams(practiceIdParamSchema, 'Invalid Practice ID'),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get('user')!; // Auth middleware guarantees user is non-null
     const validatedParams = c.get('validatedParams');
 
     await deletePracticeService(validatedParams.uuid,
@@ -91,7 +91,7 @@ practiceApp.delete('/:uuid',
 practiceApp.put('/:uuid/active',
   validateParams(practiceIdParamSchema, 'Invalid Practice ID'),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get('user')!; // Auth middleware guarantees user is non-null
     const validatedParams = c.get('validatedParams');
 
     const result = await setActivePractice(validatedParams.uuid,

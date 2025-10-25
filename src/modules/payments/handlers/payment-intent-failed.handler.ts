@@ -56,6 +56,10 @@ export const handlePaymentIntentFailed
         status: 'canceled', // Failed payments are marked as canceled
       });
 
+      // Check if this is an intake payment and handle it
+      // TODO: Integrate with intake payment handlers when payments module is fixed
+      // await handleIntakePaymentFailed(paymentIntentData as Stripe.PaymentIntent);
+
       // Publish simple payment failed event
       void publishSimpleEvent(EventType.PAYMENT_FAILED, 'system', connectedAccount.organization_id, {
         payment_intent_id: paymentIntent.id,
